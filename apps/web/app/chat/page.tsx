@@ -1,16 +1,40 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowUp, Paperclip, Settings } from "lucide-react";
+import { ArrowUp, Paperclip } from "lucide-react";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
+
+const MessageContent = ({ content }: { content: string }) => {
+  return (
+    <motion.p className="text-sm whitespace-pre-wrap">
+      <AnimatePresence mode="popLayout">
+        {content.split("").map((char, index) => (
+          <motion.span
+            key={index}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              duration: 0.5,
+              delay: index * 0.02,
+            }}
+            style={{ display: "inline-block", whiteSpace: "pre" }}
+          >
+            {char}
+          </motion.span>
+        ))}
+      </AnimatePresence>
+    </motion.p>
+  );
+};
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -36,7 +60,6 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    // Add user message
     const userMessage: Message = {
       role: "user",
       content: input.trim(),
@@ -47,7 +70,6 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // Add empty assistant message for streaming
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "", timestamp: new Date() },
@@ -77,7 +99,6 @@ export default function ChatPage() {
         const chunk = decoder.decode(value);
         content += chunk;
 
-        // Update the last message with the new content
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1].content = content;
@@ -104,19 +125,28 @@ export default function ChatPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto space-y-4">
-          {messages.map((message, index) => (
-            <div key={index} className="max-w-md flex gap-2">
-              <Card
-                className={`p-3 w-full ${
-                  message.role === "user"
-                    ? "bg-primary/5 border-none"
-                    : "bg-secondary"
-                }`}
+          <AnimatePresence mode="popLayout">
+            {messages.map((message, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="max-w-md flex gap-2"
               >
-                <p className="text-sm">{message.content}</p>
-              </Card>
-            </div>
-          ))}
+                <Card
+                  className={`p-3 w-full ${
+                    message.role === "user"
+                      ? "bg-primary/5 border-none"
+                      : "bg-secondary"
+                  }`}
+                >
+                  <MessageContent content={message.content} />
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
       </div>
