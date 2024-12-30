@@ -179,6 +179,9 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // FIX: not safe to use localStorage to store API key
+  // - encrypt and save or
+  // - use a server to store and retrieve
   useEffect(() => {
     const storedApiKey = localStorage.getItem("open_router_api_key");
     const storedModel = localStorage.getItem("openrouter_model_name");
