@@ -77,7 +77,7 @@ export default function ChatLayout({
             value={openrouterModelName}
             onChange={(e) => setOpenrouterModelName(e.target.value)}
             placeholder="OpenRouter Model Name"
-            className="bg-secondary focus-visible:ring-0 text-truncate w-[30dvw]"
+            className="bg-secondary focus-visible:ring-0 text-truncate w-[45dvw] md:w-[30dvw] text-center"
           />
 
           <Button
