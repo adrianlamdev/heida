@@ -1,14 +1,106 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile, Form
-from app.services import Retriever, DocumentProcessor, Reranker
-from app.core import SUPPORTED_CONTENT_TYPES, logger
-import uvicorn
+from typing import Dict
 
+import uvicorn
+from duckduckgo_search import DDGS
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+
+from app.core import SUPPORTED_CONTENT_TYPES, logger
+from app.services import DocumentProcessor, Reranker, Retriever
 
 app = FastAPI()
 
 
+@app.get("/api/v1/search")
+async def search_documents(query: str) -> Dict:
+    """
+    Endpoint to perform document retrieval based on a query.
+
+    Args:
+        query (str): The search query to retrieve relevant content
+
+    Returns:
+        dict: Contains the query, retrieval results, and result count
+
+    Raises:
+        HTTPException: If query is empty
+    """
+
+    if not query or query.isspace():
+        logger.warning("Empty query")
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    try:
+        raw_results = DDGS().text(query, max_results=10)
+
+        if not raw_results:
+            logger.warning("No results found", query=query)
+            return {"query": query, "results": [], "count": 0}
+
+        combined_content = ""
+        result_metadata = {}
+
+        for i, result in enumerate(raw_results):
+            result_metadata[i] = {
+                "title": result["title"],
+                "url": result["href"],
+                "source": "duckduckgo",
+                "result_index": i,
+            }
+            combined_content += f"{result['body']}\n\n"
+
+        processor = DocumentProcessor()
+        chunks, embeddings, bm25 = processor.process_documents(
+            combined_content.encode("utf-8"),
+            content_type="text/plain",
+        )
+
+        for chunk in chunks:
+            chunk_idx = chunk.metadata["chunk_index"]
+            if chunk_idx in result_metadata:
+                chunk.metadata.update(result_metadata[chunk_idx])
+
+        retriever = Retriever(processor.model)
+        results = retriever.retrieve(
+            query=query, chunks=chunks, embeddings=embeddings, bm25=bm25
+        )
+
+        reranker = Reranker()
+        reranked_results = reranker.rerank(
+            query, [result["chunk"] for result in results]
+        )
+
+        search_results = []
+        for result in reranked_results:
+            search_results.append(
+                {
+                    "content": result["chunk"].content,
+                    "metadata": result["chunk"].metadata,
+                    "score": result.get("score", 0),
+                }
+            )
+
+        return {
+            "query": query,
+            "results": search_results,
+            "count": len(search_results),
+        }
+
+    except Exception as e:
+        logger.error(
+            "Search failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            query=query if query else None,
+        )
+        raise HTTPException(
+            status_code=500, detail=f"An error occurred during retrieval: {str(e)}"
+        )
+
+
 @app.post("/api/v1/retrieve")
-async def retrieve(query: str = Form(..., min_length=1), file: UploadFile = File(...)):
+async def retrieve(
+    query: str = Form(..., min_length=1), file: UploadFile = File(...)
+) -> Dict:
     """
     Endpoint to perform document retrieval based on a query and uploaded file.
 
@@ -39,11 +131,6 @@ async def retrieve(query: str = Form(..., min_length=1), file: UploadFile = File
             status_code=400,
             detail=f"Unsupported file type. Supported types are: {', '.join(SUPPORTED_CONTENT_TYPES)}",
         )
-    # elif len(await file.read()) > 10 * 1024 * 1024:
-    #     logger.warning("File size too large", file_size=file.size)
-    #     raise HTTPException(
-    #         status_code=400, detail="File size too large. Max size is 10MB"
-    #     )
 
     try:
         file_content = await file.read()
@@ -53,10 +140,8 @@ async def retrieve(query: str = Form(..., min_length=1), file: UploadFile = File
         chunks, embeddings, bm25 = processor.process_documents(
             file_content, file.content_type
         )
-        logger.info("Document processed", chunk_count=len(chunks))
 
         retriever = Retriever(processor.model)
-
         results = retriever.retrieve(
             query=query, chunks=chunks, embeddings=embeddings, bm25=bm25
         )
@@ -66,10 +151,20 @@ async def retrieve(query: str = Form(..., min_length=1), file: UploadFile = File
             query, [result["chunk"] for result in results]
         )
 
+        search_results = []
+        for result in reranked_results:
+            search_results.append(
+                {
+                    "content": result["chunk"].content,
+                    "metadata": result["chunk"].metadata,
+                    "score": result.get("score", 0),
+                }
+            )
+
         return {
             "query": query,
-            "results": reranked_results,
-            "count": len(reranked_results),
+            "results": search_results,
+            "count": len(search_results),
         }
 
     except Exception as e:

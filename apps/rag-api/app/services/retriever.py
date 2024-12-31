@@ -9,26 +9,25 @@ nltk.download("punkt")
 nltk.download("punkt_tab")
 
 
-"""
-Retriever class for hybrid semantic and BM25 search.
-
-This class implements a hybrid retrieval system that combines semantic search using
-embeddings with BM25 lexical search. Results are combined using a rank fusion
-approach with configurable weighting.
-
-Implementation is guided by approaches described in:
-"Contextual Retrieval" (Anthropic, 2024)
-https://www.anthropic.com/news/contextual-retrieval
-
-This implementation specifically adapts the hybrid semantic-lexical retrieval
-concept and rank fusion approach.
-
-Attributes:
-    model: The embedding model used for semantic search
-"""
-
-
 class Retriever:
+    """
+    Retriever class for hybrid semantic and BM25 search.
+
+    This class implements a hybrid retrieval system that combines semantic search using
+    embeddings with BM25 lexical search. Results are combined using a rank fusion
+    approach with configurable weighting.
+
+    Implementation is guided by approaches described in:
+    "Contextual Retrieval" (Anthropic, 2024)
+    https://www.anthropic.com/news/contextual-retrieval
+
+    This implementation specifically adapts the hybrid semantic-lexical retrieval
+    concept and rank fusion approach.
+
+    Attributes:
+        model: The embedding model used for semantic search
+    """
+
     def __init__(self, model):
         logger.info("Initializing Retriever")
         self.model = model
