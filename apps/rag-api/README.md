@@ -50,13 +50,13 @@ fastapi run app/main.py
 docker build -t heida/rag-api .
 
 # Run container
-docker run -p 8000:8000 heyada/rag-api
+docker run -p 8000:8000 heida/rag-api
 ```
 
-## Testing (coming soon)
+## Testing
 
 Run the test suite:
 
 ```bash
-pytest
+npm run test
 ```

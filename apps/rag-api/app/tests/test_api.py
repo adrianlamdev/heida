@@ -1,16 +1,13 @@
 from app.main import app
-import pytest
 from fastapi.testclient import TestClient
-from fastapi import UploadFile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from io import BytesIO
 
 client = TestClient(app)
 
 
-def test_retrieve_endpoint_returns_results():
-    file_content = b"Mock file content"
-    mock_file = BytesIO(file_content)
+def test_retrieve_endpoint_returns_results(sample_pdf_content):
+    mock_file = BytesIO(sample_pdf_content)
 
     with patch("app.main.DocumentProcessor") as mock_processor, patch(
         "app.main.Retriever"
@@ -53,9 +50,8 @@ def test_retrieve_endpoint_handles_unsupported_file_type():
     assert "Unsupported file type" in response.json()["detail"]
 
 
-def test_retrieve_endpoint_handles_empty_query():
-    file_content = b"Mock file content"
-    mock_file = BytesIO(file_content)
+def test_retrieve_endpoint_handles_empty_query(sample_pdf_content):
+    mock_file = BytesIO(sample_pdf_content)
 
     response = client.post(
         "/api/v1/retrieve",
@@ -79,9 +75,8 @@ def test_retrieve_endpoint_handles_empty_file():
     assert "An error occurred during retrieval" in response.json()["detail"]
 
 
-def test_retrieve_endpoint_handles_processing_error():
-    file_content = b"Mock file content"
-    mock_file = BytesIO(file_content)
+def test_retrieve_endpoint_handles_processing_error(sample_pdf_content):
+    mock_file = BytesIO(sample_pdf_content)
 
     with patch("app.main.DocumentProcessor") as mock_processor:
         mock_processor_instance = mock_processor.return_value

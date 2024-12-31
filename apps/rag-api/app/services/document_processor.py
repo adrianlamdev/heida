@@ -55,7 +55,7 @@ class DocumentProcessor:
             str: Extracted plain text
 
         Raises:
-            ValueError: If file processing fails
+        ValueError: If file type is unsupported or processing fails
         """
         logger.info("Extracting text from file", content_type=content_type)
         try:
@@ -78,14 +78,15 @@ class DocumentProcessor:
                 return soup.get_text(separator=" ", strip=True)
             elif content_type in ["text/javascript", "application/javascript"]:
                 return content
-            return content
+            # NOTE: Probably add more file types here instead of erroring out
+            raise ValueError(f"Unsupported file type: {content_type}")
         except Exception as e:
             logger.error(
                 "Text extraction failed", error=str(e), content_type=content_type
             )
             raise ValueError(f"Error processing file: {str(e)}")
 
-    # WARN: Contextual enrichment works but kinda slow/expensive
+    # NOTE: Contextual enrichment works but kinda slow/expensive
     # def create_context(self, chunk):
     #     prompt = f"""Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.
     #     Chunk: {chunk}"""
@@ -103,7 +104,7 @@ class DocumentProcessor:
         text = self.extract_text(file_content, content_type)
         chunks = self.text_splitter.split_text(text)
 
-        # WARN: Contextual enrichment
+        # NOTE: Contextual enrichment
         # for i, chunk in enumerate(chunks):
         #    context = self.create_context(chunk)
         #    chunks[i] = f"{context}; {chunk}"

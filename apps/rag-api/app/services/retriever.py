@@ -33,7 +33,7 @@ class Retriever:
         logger.info("Initializing Retriever")
         self.model = model
 
-    # WARN: For token counting (in development)
+    # NOTE: For token counting (in development)
     # self.token_counter = TokenCounter()
     # self.token_stats = {
     #     "total_query_tokens": 0,
@@ -109,7 +109,7 @@ class Retriever:
 
         return retrieved_docs
 
-    # WARN: Get token stats later (in development)
+    # NOTE: Get token stats later (in development)
     # def get_token_stats(self):
     #     stats = self.token_stats.copy()
     #     if stats["queries_processed"] > 0:
