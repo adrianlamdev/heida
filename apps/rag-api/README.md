@@ -1,12 +1,21 @@
 # Heida's RAG API
 
-A hybrid retrieval API service for the Heida platform. This service implements a sophisticated RAG (Retrieval-Augmented Generation) system combining semantic search with BM25 lexical search.
+A hybrid retrieval API service for the Heida platform. This service implements a sophisticated RAG (Retrieval-Augmented Generation) system combining semantic search with BM25 lexical search and cross-encoder reranking.
+
+## Default Model Configurations
+
+- **Embeddings:** `BAAI/bge-base-en-v1.5`
+- **Reranker:** `jinaai/jina-reranker-v2-base-multilingual`
+  - Tokenizer: `cl100k_base`
 
 ## API Endpoints
 
 ### POST /api/v1/retrieve
 
-Performs document retrieval based on a query and uploaded file.
+Performs document retrieval based on a query and uploaded file, using a multi-stage ranking process:
+
+1. Initial hybrid retrieval (semantic + BM25)
+2. Cross-encoder reranking for improved relevance
 
 #### Parameters
 
@@ -29,9 +38,14 @@ Performs document retrieval based on a query and uploaded file.
 
 ```json
 {
-    "query": "your search query",
-    "results": [...],
-    "count": number
+  "query": "your search query",
+  "results": [
+    {
+      "chunk": "relevant text chunk",
+      "score": 0.95
+    }
+  ],
+  "count": number
 }
 ```
 
