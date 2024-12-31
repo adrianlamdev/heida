@@ -5,7 +5,7 @@ from nltk.tokenize import word_tokenize
 import json
 from bs4 import BeautifulSoup
 from app.core import logger
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 import io
 
 

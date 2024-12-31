@@ -27,6 +27,8 @@ importers:
         specifier: 5.5.4
         version: 5.5.4
 
+  apps/rag-api: {}
+
   apps/web:
     dependencies:
       '@workspace/ui':
