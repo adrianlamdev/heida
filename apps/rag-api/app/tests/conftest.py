@@ -58,7 +58,17 @@ def sample_json_content():
 
 @pytest.fixture
 def sample_html_content():
-    return b"<html><body><p>Sample HTML</p></body></html>"
+    return b"""
+    <html>
+        <head>
+            <title>Test</title>
+            <meta name="description" content="Test description">
+        </head>
+        <body>
+            <p>Sample HTML</p>
+        </body>
+    </html>
+    """
 
 
 @pytest.fixture

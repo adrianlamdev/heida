@@ -10,6 +10,8 @@ from app.core import logger
 from pypdf import PdfReader
 import io
 
+from app.core.config import SUPPORTED_CONTENT_TYPES
+
 
 @dataclass
 class Chunk:
@@ -66,12 +68,16 @@ class DocumentProcessor:
             content_type: MIME type of the file
 
         Returns:
-            str: Extracted plain text
+            Tuple[str, Dict] : Extracted text and metadata
 
         Raises:
             ValueError: If file type is unsupported or processing fails
         """
         logger.info("Extracting text from file", content_type=content_type)
+        if content_type not in SUPPORTED_CONTENT_TYPES:
+            logger.error(f"Unsupported file type: {content_type}")
+            raise ValueError(f"Unsupported file type: {content_type}")
+
         metadata = {}
 
         try:
