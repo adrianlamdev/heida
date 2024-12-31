@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form
-from services import Retriever, DocumentProcessor
-from core import SUPPORTED_CONTENT_TYPES, logger
+from app.services import Retriever, DocumentProcessor
+from app.core import SUPPORTED_CONTENT_TYPES, logger
 import uvicorn
 
 

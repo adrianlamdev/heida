@@ -3,7 +3,7 @@ import numpy as np
 import nltk
 from nltk.tokenize import word_tokenize
 from rank_bm25 import BM25Okapi
-from core import logger
+from app.core import logger
 
 nltk.download("punkt")
 nltk.download("punkt_tab")

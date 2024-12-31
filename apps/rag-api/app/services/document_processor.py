@@ -4,7 +4,7 @@ from rank_bm25 import BM25Okapi
 from nltk.tokenize import word_tokenize
 import json
 from bs4 import BeautifulSoup
-from core import logger
+from app.core import logger
 from PyPDF2 import PdfReader
 import io
 
