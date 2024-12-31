@@ -21,14 +21,19 @@ BGE embeddings for semantic representations, and BM25Okapi for lexical search.
 
 Attributes:
     text_splitter: RecursiveCharacterTextSplitter for document chunking
-    model: SentenceTransformer model for computing embeddings
+    model: SentenceTransformer model for computing embeddings (default: BAAI/bge-base-en-v1.5)
     chunk_size: Size of text chunks (default: 500)
     chunk_overlap: Overlap between chunks (default: 50)
 """
 
 
 class DocumentProcessor:
-    def __init__(self, chunk_size=500, chunk_overlap=50):
+    def __init__(
+        self,
+        model: str = "BAAI/bge-base-en-v1.5",
+        chunk_size: int = 500,
+        chunk_overlap: int = 50,
+    ):
         logger.info(
             "Initializing DocumentProcessor",
             chunk_size=chunk_size,
@@ -39,10 +44,11 @@ class DocumentProcessor:
             chunk_overlap=chunk_overlap,
             separators=["\n\n", "\n", ". ", "—", ", ", " ", ""],
         )
-        self.model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+        self.model = SentenceTransformer(model)
 
     def extract_text(self, file_content, content_type: str) -> str:
-        """Extract plain text from various file formats.
+        """
+        Extract plain text from various file formats.
 
         Supports PDF, JSON, HTML, and JavaScript files. Handles text extraction
         with appropriate preprocessing for each format.
@@ -55,7 +61,7 @@ class DocumentProcessor:
             str: Extracted plain text
 
         Raises:
-        ValueError: If file type is unsupported or processing fails
+            ValueError: If file type is unsupported or processing fails
         """
         logger.info("Extracting text from file", content_type=content_type)
         try:
@@ -99,7 +105,16 @@ class DocumentProcessor:
     #
 
     def process_documents(self, file_content, content_type: str) -> tuple:
-        """Process document content into chunks with embeddings and BM25 index."""
+        """
+        Process document content into chunks with embeddings and BM25 index.
+
+        Args:
+            file_content: Raw file content bytes
+            content_type: MIME type of the file
+
+        Returns:
+            tuple: Tuple containing chunks, embeddings, and BM25 index
+        """
         logger.info("Processing document", content_type=content_type)
         text = self.extract_text(file_content, content_type)
         chunks = self.text_splitter.split_text(text)

@@ -47,9 +47,10 @@ class Retriever:
         chunks: List[int],
         embeddings,
         bm25: BM25Okapi,
-        top_k: int = 3,
+        top_k: int = 10,
     ) -> List[dict]:
-        """Retrieve the most relevant documents using hybrid search.
+        """
+        Retrieve the most relevant documents using hybrid search.
 
         Performs both semantic and BM25 search and combines results using rank fusion.
 
@@ -75,6 +76,9 @@ class Retriever:
                 bm25_none=bm25 is None,
             )
             raise ValueError("chunks, embeddings, and bm25 must not be None")
+
+        if top_k > len(chunks):
+            top_k = len(chunks)
 
         semantic_results = self._semantic_search(query, embeddings, top_k)
         bm25_results = self._bm25_search(query, bm25, top_k)
@@ -124,7 +128,8 @@ class Retriever:
     def _semantic_search(
         self, query: str, embeddings, top_k: int
     ) -> List[Tuple[int, float]]:
-        """Perform semantic search using embedding similarity.
+        """
+        Perform semantic search using embedding similarity.
 
         Args:
             query: Search query
@@ -146,7 +151,8 @@ class Retriever:
     def _bm25_search(
         self, query: str, bm25: BM25Okapi, top_k: int
     ) -> List[Tuple[int, float]]:
-        """Perform lexical search using BM25 scoring.
+        """
+        Perform lexical search using BM25 scoring.
 
         Args:
             query: Search query
@@ -167,7 +173,8 @@ class Retriever:
         bm25_results: List[Tuple[int, float]],
         alpha: float = 0.5,
     ) -> List[Tuple[int, float]]:
-        """Combine semantic and BM25 results using rank fusion.
+        """
+        Combine semantic and BM25 results using rank fusion.
 
         Normalizes scores from both methods and combines them using weighted sum.
 
