@@ -1,8 +1,6 @@
 import structlog
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
