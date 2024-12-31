@@ -8,7 +8,7 @@ app = FastAPI()
 
 
 @app.post("/api/v1/retrieve")
-async def retrieve(query: str = Form(...), file: UploadFile = File(...)):
+async def retrieve(query: str = Form(..., min_length=1), file: UploadFile = File(...)):
     """
     Endpoint to perform document retrieval based on a query and uploaded file.
 
@@ -26,14 +26,19 @@ async def retrieve(query: str = Form(...), file: UploadFile = File(...)):
         "Received retrieval request",
         file_type=file.content_type,
     )
-    try:
-        if file.content_type not in SUPPORTED_CONTENT_TYPES:
-            logger.warning("Unsupported file type", content_type=file.content_type)
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file type. Supported types are: {', '.join(SUPPORTED_CONTENT_TYPES)}",
-            )
 
+    if not query:
+        logger.warning("Empty query")
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    if file.content_type not in SUPPORTED_CONTENT_TYPES:
+        logger.warning("Unsupported file type", content_type=file.content_type)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Supported types are: {', '.join(SUPPORTED_CONTENT_TYPES)}",
+        )
+
+    try:
         file_content = await file.read()
         logger.info("File read successfully", content_length=len(file_content))
 
