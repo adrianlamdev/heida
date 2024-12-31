@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "fastapi dev main.py"
+    "start": "fastapi run app/main.py",
+    "dev": "fastapi dev app/main.py"
   }
 }
