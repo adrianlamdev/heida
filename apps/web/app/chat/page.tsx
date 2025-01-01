@@ -3,6 +3,9 @@
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import React, { useState, useEffect, useRef } from "react";
+import remarkMath from "remark-math";
+import rehypeMathjax from "rehype-mathjax";
+import "katex/dist/katex.min.css";
 import {
   X,
   File,
@@ -12,8 +15,6 @@ import {
   Copy,
   Check,
   Search,
-  Globe,
-  MoreVertical,
 } from "lucide-react";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
@@ -21,7 +22,6 @@ import { Card } from "@workspace/ui/components/card";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,6 +96,7 @@ const CodeBlock = ({ code, language }: CodeBlockProps) => {
   );
 };
 
+// FIXME: currently can't render special properties like \, and [; works for $ and $$
 const MessageContent = ({ content }: { content: string }) => {
   return (
     <motion.div
@@ -105,42 +106,87 @@ const MessageContent = ({ content }: { content: string }) => {
       transition={{ duration: 0.3 }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[
+          [
+            rehypeMathjax,
+            {
+              strict: false,
+              throwOnError: false,
+              output: "htmlAndMathml",
+            },
+          ],
+        ]}
         components={{
-          p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
-          a: ({ ...props }) => (
+          // FIXME: remove key prop from all components
+          p: ({ children, key, ...props }) => (
+            <p key={key} className="mb-4 last:mb-0" {...props}>
+              {children}
+            </p>
+          ),
+          a: ({ children, key, ...props }) => (
             <a
+              key={key}
               className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
               {...props}
-            />
+            >
+              {children}
+            </a>
           ),
-          ul: ({ ...props }) => (
-            <ul className="list-disc pl-6 mb-4 space-y-2" {...props} />
+          ul: ({ children, key, ...props }) => (
+            <ul key={key} className="list-disc pl-6 mb-4 space-y-2" {...props}>
+              {children}
+            </ul>
           ),
-          ol: ({ ...props }) => (
-            <ol className="list-decimal pl-6 mb-4 space-y-2" {...props} />
+          ol: ({ children, key, ...props }) => (
+            <ol
+              key={key}
+              className="list-decimal pl-6 mb-4 space-y-2"
+              {...props}
+            >
+              {children}
+            </ol>
           ),
-          li: ({ ...props }) => <li className="mb-1" {...props} />,
-          h1: ({ ...props }) => (
-            <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />
+          li: ({ children, key, ...props }) => (
+            <li key={key} className="mb-1" {...props}>
+              {children}
+            </li>
           ),
-          h2: ({ ...props }) => (
-            <h2 className="text-xl font-bold mb-3 mt-5" {...props} />
+          h1: ({ children, key, ...props }) => (
+            <h1 key={key} className="text-2xl font-bold mb-4 mt-6" {...props}>
+              {children}
+            </h1>
           ),
-          h3: ({ ...props }) => (
-            <h3 className="text-lg font-bold mb-2 mt-4" {...props} />
+          h2: ({ children, key, ...props }) => (
+            <h2 key={key} className="text-xl font-bold mb-3 mt-5" {...props}>
+              {children}
+            </h2>
           ),
-          code: ({ inline, className, children, ...props }) => {
+          h3: ({ children, key, ...props }) => (
+            <h3 key={key} className="text-lg font-bold mb-2 mt-4" {...props}>
+              {children}
+            </h3>
+          ),
+          code: ({ inline, className, children, key, ...props }) => {
             const match = /language-(\w+)/.exec(className || "");
+            const isMath =
+              className?.includes("math-inline") ||
+              className?.includes("math-display") ||
+              className?.includes("language-math");
+
+            if (isMath) {
+              return <span className="katex-wrapper">{children}</span>;
+            }
 
             return match ? (
               <CodeBlock
+                key={key}
                 code={String(children).replace(/\n$/, "")}
-                language={match?.[1] || "text"}
+                language={match[1] || "text"}
               />
             ) : (
               <code
+                key={key}
                 className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
                 {...props}
               >
@@ -148,29 +194,42 @@ const MessageContent = ({ content }: { content: string }) => {
               </code>
             );
           },
-          pre: ({ ...props }) => <pre className="overflow-hidden" {...props} />,
-          blockquote: ({ ...props }) => (
+          blockquote: ({ children, key, ...props }) => (
             <blockquote
+              key={key}
               className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
               {...props}
-            />
+            >
+              {children}
+            </blockquote>
           ),
-          table: ({ ...props }) => (
-            <div className="overflow-x-auto my-4">
-              <table className="min-w-full divide-y divide-border" {...props} />
+          table: ({ children, key, ...props }) => (
+            <div key={key} className="overflow-x-auto my-4">
+              <table className="min-w-full divide-y divide-border" {...props}>
+                {children}
+              </table>
             </div>
           ),
-          th: ({ ...props }) => (
+          th: ({ children, key, ...props }) => (
             <th
+              key={key}
               className="px-4 py-2 bg-muted font-semibold text-left"
               {...props}
-            />
+            >
+              {children}
+            </th>
           ),
-          td: ({ ...props }) => (
-            <td className="px-4 py-2 border-t border-border" {...props} />
+          td: ({ children, key, ...props }) => (
+            <td
+              key={key}
+              className="px-4 py-2 border-t border-border"
+              {...props}
+            >
+              {children}
+            </td>
           ),
-          hr: ({ ...props }) => (
-            <hr className="my-6 border-border" {...props} />
+          hr: ({ key, ...props }) => (
+            <hr key={key} className="my-6 border-border" {...props} />
           ),
         }}
       >
@@ -234,7 +293,8 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // NOTE: maybe remove this since it's annoying? will survey
+    //messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -370,7 +430,7 @@ export default function ChatPage() {
 
       <div className="flex-1 overflow-y-auto w-full">
         <div className="h-full flex flex-col">
-          <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-32">
+          <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-28 md:pb-36">
             {messages.length === 0 ? (
               <div className="h-full w-full flex items-center justify-center flex-col gap-2">
                 <div className="flex items-center gap-4">
@@ -389,7 +449,7 @@ export default function ChatPage() {
                   {messages.map((message, index) => (
                     <Card
                       key={index}
-                      className={`p-4 w-full rounded-2xl ${
+                      className={`p-4 w-full rounded-2xl shadow ${
                         message.role === "user"
                           ? "bg-secondary/80 shadow-inner"
                           : "bg-card border-border"
@@ -503,7 +563,7 @@ export default function ChatPage() {
                   ? "Add a message..."
                   : "Type a message..."
               }
-              className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2 h-10"
+              className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
             />
             <AnimatePresence mode="wait">
               {isLoading ? (

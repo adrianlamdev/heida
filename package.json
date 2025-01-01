@@ -8,6 +8,11 @@
     "lint": "biome lint --write .",
     "format": "biome format --write ."
   },
+  "pnpm": {
+    "overrides": {
+      "jsdom": "25.0.1"
+    }
+  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@workspace/eslint-config": "workspace:*",
