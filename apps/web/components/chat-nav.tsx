@@ -37,7 +37,8 @@ export default function ChatNav() {
   }, [openrouterModelName]);
 
   return (
-    <nav className="px-4 py-2 flex justify-center w-full mx-auto relative bg-background z-50 shadow">
+    <nav className="px-4 py-3 flex justify-center w-full mx-auto relative bg-background z-50 shadow">
+      <div className="fixed top-0 left-0 right-0 h-28 bg-gradient-to-b from-background to-transparent pointer-events-none -z-10" />
       <div className="max-w-3xl w-full">
         <div className="flex justify-between w-full items-center">
           <Sheet>
@@ -68,7 +69,7 @@ export default function ChatNav() {
             value={openrouterModelName}
             onChange={(e) => setOpenrouterModelName(e.target.value)}
             placeholder="OpenRouter Model Name"
-            className="bg-secondary focus-visible:ring-0 text-truncate w-[45dvw] md:w-[30dvw] text-center"
+            className="bg-background focus-visible:ring-0 text-truncate w-[45dvw] md:w-[30dvw] text-center"
           />
 
           <Button

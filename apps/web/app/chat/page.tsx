@@ -391,7 +391,7 @@ export default function ChatPage() {
                       key={index}
                       className={`p-4 w-full rounded-2xl ${
                         message.role === "user"
-                          ? "bg-primary/5 border-none"
+                          ? "bg-secondary/80 shadow-inner"
                           : "bg-card border-border"
                       }`}
                     >
