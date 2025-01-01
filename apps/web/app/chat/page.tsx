@@ -3,7 +3,18 @@
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, ArrowUp, Paperclip, Copy, Check } from "lucide-react";
+import {
+  X,
+  File,
+  Loader2,
+  ArrowUp,
+  Paperclip,
+  Copy,
+  Check,
+  Search,
+  Globe,
+  MoreVertical,
+} from "lucide-react";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
 import { Card } from "@workspace/ui/components/card";
@@ -88,7 +99,7 @@ const CodeBlock = ({ code, language }: CodeBlockProps) => {
 const MessageContent = ({ content }: { content: string }) => {
   return (
     <motion.div
-      className="text-sm w-full"
+      className="w-full text-sm md:text-base"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -178,6 +189,34 @@ export default function ChatPage() {
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
+
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
+    const files = Array.from(event.target.files);
+    setAttachedFiles((prev) => [...prev, ...files]);
+  };
+
+  const handleFileRemove = (index: number) => {
+    setAttachedFiles((prev) => {
+      const newFiles = [...prev];
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  const handlePaperclipClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const resetFileAttachment = () => {
+    setFileAttachmentReset((prev) => !prev);
+  };
 
   // FIX: not safe to use localStorage to store API key
   // - encrypt and save or
@@ -198,32 +237,45 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (fileAttachmentReset) {
+      setAttachedFiles([]);
+      setFileAttachmentReset(false);
+    }
+  }, [fileAttachmentReset]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      role: "user",
-      content: input.trim(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
+    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
 
     try {
+      setIsLoading(true);
+
       abortControllerRef.current = new AbortController();
+
+      const userMessage: Message = {
+        role: "user",
+        content: input.trim(),
+      };
+
+      console.log("User message:", userMessage);
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+      resetFileAttachment();
+
+      const formData = new FormData();
+      formData.append("messages", JSON.stringify([...messages, userMessage]));
+      formData.append("apiKey", openRouterApiKey || "");
+      formData.append("model", model || "");
+      formData.append("webSearchEnabled", webSearchEnabled.toString());
+      attachedFiles.forEach((file, index) => {
+        formData.append(`attachments[${index}]`, file);
+      });
+
       const response = await fetch("/api/v1/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          apiKey: openRouterApiKey,
-          model: model,
-          stream: true,
-        }),
+        body: formData,
         signal: abortControllerRef.current.signal,
       });
 
@@ -274,6 +326,7 @@ export default function ChatPage() {
     } finally {
       setIsLoading(false);
       abortControllerRef.current = null;
+      console.log("handleSubmit completed");
     }
   };
 
@@ -287,7 +340,7 @@ export default function ChatPage() {
   };
 
   return (
-    <main className="flex flex-col h-full p-4 pb-8">
+    <main className="flex flex-col h-full relative items-center justify-center">
       {showDialog && (
         <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
           <AlertDialogContent className="max-w-md">
@@ -315,58 +368,142 @@ export default function ChatPage() {
         </AlertDialog>
       )}
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto space-y-4 h-full w-full">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-2">
-              <div className="flex items-center gap-4">
-                <span className="shrink-0 bg-muted rounded-full p-2 flex items-center justify-center">
-                  👋
-                </span>
-                <h2 className="text-2xl font-bold tracking-tight">
-                  Let&apos; get started.
-                </h2>
-              </div>
-              <p>How can I help you today?</p>
-            </div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {messages.map((message, index) => (
-                <div key={index} className="max-w-md flex gap-2">
-                  <Card
-                    className={`p-3 w-full ${
-                      message.role === "user"
-                        ? "bg-primary/5 border-none"
-                        : "bg-card border-border"
-                    }`}
-                  >
-                    <MessageContent content={message.content} />
-                  </Card>
+      <div className="flex-1 overflow-y-auto w-full">
+        <div className="h-full flex flex-col">
+          <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-32">
+            {messages.length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center flex-col gap-2">
+                <div className="flex items-center gap-4">
+                  <span className="shrink-0 bg-muted rounded-full p-2 flex items-center justify-center">
+                    👋
+                  </span>
+                  <h2 className="text-2xl font-bold tracking-tight">
+                    Let&apos; get started.
+                  </h2>
                 </div>
-              ))}
-            </AnimatePresence>
-          )}
-          <div ref={messagesEndRef} />
+                <p>How can I help you today?</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                <div className="mt-10 flex flex-col gap-4">
+                  {messages.map((message, index) => (
+                    <Card
+                      key={index}
+                      className={`p-4 w-full rounded-2xl ${
+                        message.role === "user"
+                          ? "bg-primary/5 border-none"
+                          : "bg-card border-border"
+                      }`}
+                    >
+                      <MessageContent content={message.content} />
+                    </Card>
+                  ))}
+                </div>
+              </AnimatePresence>
+            )}
+            <div className="fixed bottom-0 left-0 right-0 h-52 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 px-6">
-        <div className="max-w-3xl mx-auto flex gap-2">
-          <div className="flex-1 flex items-center bg-secondary rounded-full w-full p-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full"
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
+      <form
+        onSubmit={handleSubmit}
+        className="fixed bottom-4 md:bottom-6 left-0 right-0 max-w-3xl mx-auto px-4 z-10 rounded-full mb-4"
+      >
+        <div className="max-w-3xl mx-auto flex gap-2 w-full">
+          <div className="flex-1 flex items-center bg-secondary/80 transition-colors focus-within:bg-secondary rounded-full w-full p-1 pl-2 relative border shadow-lg gap-2">
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                {/* <Button */}
+                {/*   size="icon" */}
+                {/*   variant="ghost" */}
+                {/*   className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent" */}
+                {/* > */}
+                {/*   <MoreVertical className="h-5 w-5" /> */}
+                {/* </Button> */}
+
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  multiple
+                />
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePaperclipClick}
+                  className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent"
+                >
+                  <Paperclip className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                  className={`h-8 px-2 py-1 rounded-full flex items-center gap-2 hover:bg-transparent ${
+                    webSearchEnabled
+                      ? "bg-background hover:bg-background/50"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <Search className={`h-5 w-5 ${webSearchEnabled ? "" : ""}`} />
+                  <span>Web Search</span>
+                </Button>
+              </div>
+
+              {attachedFiles.length > 0 && (
+                <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg">
+                  <div className="flex flex-col gap-2">
+                    {attachedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <File className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm truncate max-w-[200px]">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          type="button"
+                          className="text-muted-foreground hover:bg-transparent"
+                          onClick={() => handleFileRemove(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message..."
-              className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2"
-              disabled={isLoading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder={
+                attachedFiles.length > 0
+                  ? "Add a message..."
+                  : "Type a message..."
+              }
+              className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2 h-10"
             />
             <AnimatePresence mode="wait">
               {isLoading ? (
@@ -378,7 +515,9 @@ export default function ChatPage() {
                   type="submit"
                   size="icon"
                   className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center"
-                  disabled={isLoading || !input.trim()}
+                  disabled={
+                    isLoading || (!input.trim() && attachedFiles.length === 0)
+                  }
                 >
                   <ArrowUp className="h-5 w-5" />
                 </Button>
