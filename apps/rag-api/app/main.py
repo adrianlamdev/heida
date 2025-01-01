@@ -1,14 +1,20 @@
 from typing import Dict
 
 import uvicorn
-from duckduckgo_search import DDGS
+from duckduckgo_search import DDGS  # NOTE: probably remove to switch to brave
+from langchain_community.document_loaders import BraveSearchLoader
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from app.core import SUPPORTED_CONTENT_TYPES, logger
 from app.services import DocumentProcessor, Reranker, Retriever
 from app.services.web_fetcher import WebFetcher
+from dotenv import load_dotenv
+import os
 
 app = FastAPI()
+
+# TODO: Other features to consider:
+# - GitHub repo integration
 
 
 @app.get("/api/v1/search")
@@ -31,7 +37,22 @@ async def search_documents(query: str) -> Dict:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 
     try:
-        raw_results = DDGS().text(query, max_results=5)
+        load_dotenv()
+        BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
+
+        if not BRAVE_API_KEY:
+            logger.error("Missing Brave API key")
+            raise HTTPException(
+                status_code=500, detail="Missing Brave API key in environment"
+            )
+
+        loader = BraveSearchLoader(
+            query=query, api_key=BRAVE_API_KEY, search_kwargs={"count": 3}
+        )
+
+        raw_results = loader.load()
+
+        logger.info("Search results loaded", count=len(raw_results))
 
         if not raw_results:
             logger.warning("No results found", query=query)
@@ -41,12 +62,12 @@ async def search_documents(query: str) -> Dict:
         url_metadata = {}
 
         for i, result in enumerate(raw_results):
-            url = result["href"]
+            url = result.metadata["link"]
             urls.append(url)
             url_metadata[url] = {
-                "title": result["title"],
+                "title": result.metadata["title"],
                 "url": url,
-                "source": "duckduckgo",
+                "source": "brave",
                 "result_index": i,
             }
 
