@@ -31,24 +31,40 @@ async def search_documents(query: str) -> Dict:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
 
     try:
-        # First pass - Get initial search results
         raw_results = DDGS().text(query, max_results=5)
 
         if not raw_results:
             logger.warning("No results found", query=query)
             return {"query": query, "results": [], "count": 0}
 
-        combined_content = ""
-        result_metadata = {}
+        urls = []
+        url_metadata = {}
 
         for i, result in enumerate(raw_results):
-            result_metadata[i] = {
+            url = result["href"]
+            urls.append(url)
+            url_metadata[url] = {
                 "title": result["title"],
-                "url": result["href"],
+                "url": url,
                 "source": "duckduckgo",
                 "result_index": i,
             }
-            combined_content += f"{result['body']}\n\n"
+
+        fetcher = WebFetcher()
+        url_contents = await fetcher.fetch_all(urls)
+
+        combined_content = ""
+        content_metadata = {}
+
+        for i, (url, (title, content)) in enumerate(url_contents.items()):
+            if content:
+                content_metadata[i] = {
+                    "title": title or url_metadata[url]["title"],
+                    "url": url,
+                    "source": "web",
+                    "result_index": i,
+                }
+                combined_content += f"{content}\n\n"
 
         processor = DocumentProcessor()
         chunks, embeddings, bm25 = processor.process_documents(
@@ -56,91 +72,33 @@ async def search_documents(query: str) -> Dict:
             content_type="text/plain",
         )
 
-        for chunk in chunks:
-            chunk_idx = chunk.metadata["chunk_index"]
-            if chunk_idx in result_metadata:
-                chunk.metadata.update(result_metadata[chunk_idx])
+        # NOTE: doesn't seem to be needed
+        # for chunk in chunks:
+        #     chunk_idx = chunk.metadata["chunk_index"]
+        #     if chunk_idx in content_metadata:
+        #         chunk.metadata.update(content_metadata[chunk_idx])
 
         retriever = Retriever(processor.model)
         results = retriever.retrieve(
-            query=query, chunks=chunks, embeddings=embeddings, bm25=bm25, top_k=5
+            query=query,
+            chunks=chunks,
+            embeddings=embeddings,
+            bm25=bm25,
+            top_k=3,
         )
-
         reranker = Reranker()
         reranked_results = reranker.rerank(
             query, [result["chunk"] for result in results]
         )
 
-        urls = set()
-
-        fetcher = WebFetcher()
-        for result in reranked_results:
-            url = result["chunk"].metadata.get("url")
-            if url:
-                urls.add(url)
-
-        url_contents = await fetcher.fetch_all(list(urls))
-
-        # Second pass - Process full url text content
-        second_pass_content = ""
-        second_pass_metadata = {}
-
-        for i, result in enumerate(reranked_results):
-            url = result["chunk"].metadata.get("url")
-            if url and url in url_contents:
-                title, full_text = url_contents[url]
-                if full_text:
-                    second_pass_metadata[i] = {
-                        "title": title or result["chunk"].metadata.get("title"),
-                        "url": url,
-                        "source": "web",
-                        "result_index": i,
-                        "original_score": result.get("score", 0),
-                    }
-                    second_pass_content += f"{full_text}\n\n"
-
-        if second_pass_content:
-            chunks2, embeddings2, bm25_2 = processor.process_documents(
-                second_pass_content.encode("utf-8"),
-                content_type="text/plain",
-            )
-
-            for chunk in chunks2:
-                chunk_idx = chunk.metadata["chunk_index"]
-                if chunk_idx in second_pass_metadata:
-                    chunk.metadata.update(second_pass_metadata[chunk_idx])
-
-            results2 = retriever.retrieve(
-                query=query,
-                chunks=chunks2,
-                embeddings=embeddings2,
-                bm25=bm25_2,
-                top_k=3,
-            )
-            reranked_results2 = reranker.rerank(
-                query, [result["chunk"] for result in results2]
-            )
-
-            search_results = []
-            for result in reranked_results2:
-                search_results.append(
-                    {
-                        "content": result["chunk"].content,
-                        "metadata": result["chunk"].metadata,
-                        "score": result.get("score", 0),
-                    }
-                )
-
-        else:
-            search_results = [
-                {
-                    "content": result["chunk"].content,
-                    "metadata": result["chunk"].metadata,
-                    "score": result.get("score", 0),
-                }
-                for result in reranked_results
-            ]
-
+        search_results = [
+            {
+                "content": result["chunk"].content,
+                "metadata": result["chunk"].metadata,
+                "score": result.get("score", 0),
+            }
+            for result in reranked_results
+        ]
         return {"query": query, "results": search_results, "count": len(search_results)}
 
     except Exception as e:
