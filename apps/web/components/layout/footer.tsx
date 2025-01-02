@@ -1,9 +1,13 @@
 import Link from "next/link";
 
 const contactLinks = [
+  // {
+  //   title: "hello@heida.ai",
+  //   href: "mailto:hello@heida.ai",
+  // },
   {
-    title: "hello@heida.ai",
-    href: "mailto:hello@heida.ai",
+    title: "adrian@lams.cc",
+    href: "mailto:adrian@lams.cc",
   },
   {
     title: "Join Beta",
