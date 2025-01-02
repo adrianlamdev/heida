@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { BackgroundBeams } from "@/components/background-beams";
 import { TextGenerateEffect } from "@/components/text-generate-effect";
@@ -10,14 +12,10 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/feature-card";
-import { HoverBorderGradient } from "@/components/hover-border-gradient";
 import { Button } from "@workspace/ui/components/button";
 import { CardHeader, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import {
-  ArrowRight,
-  FileText,
-  Search,
   Code2,
   RefreshCw,
   Sparkles,
@@ -27,7 +25,6 @@ import {
   MessageSquare,
   ChevronRight,
 } from "lucide-react";
-import Link from "next/link";
 
 const ClaudeLogo = ({ className }: { className?: string }) => {
   return (
@@ -98,7 +95,7 @@ const GeminiLogo = ({ className }: { className?: string }) => {
   );
 };
 
-export default function Page() {
+export default function HomePage() {
   return (
     <main className="min-h-screen bg-background antialiased" id="hero">
       {/* Hero Section */}
