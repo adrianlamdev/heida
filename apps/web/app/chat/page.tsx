@@ -16,7 +16,6 @@ import {
   Copy,
   Check,
   Search,
-  Square,
 } from "lucide-react";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
@@ -114,7 +113,12 @@ const STATUS_MESSAGES: { [key: string]: string } = {
   completed: "",
 };
 
-const StatusMessage = ({ status, visible }) => {
+interface StatusMessageProps {
+  status: string;
+  visible: boolean;
+}
+
+const StatusMessage = ({ status, visible }: StatusMessageProps) => {
   const message = STATUS_MESSAGES[status] || "Processing your request...";
 
   return (
@@ -202,7 +206,7 @@ const MessageContent = ({ content }: { content: string }) => {
               {children}
             </h3>
           ),
-          code: ({ inline, className, children, ...props }) => {
+          code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className || "");
             const isMath =
               className?.includes("math-inline") ||
