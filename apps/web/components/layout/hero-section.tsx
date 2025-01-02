@@ -203,7 +203,7 @@ export default function HeroSection() {
                             />
                           </motion.div>
                         </FormControl>
-                        <FormMessage className="text-left mt-1 text-sm absolute" />
+                        <FormMessage className="text-left mt-1 text-sm text-rose-700 absolute" />
                       </FormItem>
                     )}
                   />
@@ -248,7 +248,7 @@ export default function HeroSection() {
                     animate="animate"
                     exit="exit"
                   >
-                    <Alert className="max-w-lg mx-auto backdrop-blur bg-rose-800/20 border-rose-800/30 text-destructive">
+                    <Alert className="max-w-lg backdrop-blur bg-rose-800/20 border-rose-800/30 text-rose-700 mx-auto">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   </motion.div>

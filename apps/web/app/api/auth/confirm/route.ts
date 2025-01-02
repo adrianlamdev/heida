@@ -1,26 +1,47 @@
-import { type EmailOtpType } from "@supabase/supabase-js";
-import { type NextRequest } from "next/server";
-
+import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const token_hash = searchParams.get("token_hash");
-  const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/";
+// export async function GET(request: NextRequest) {
+//   const { searchParams } = new URL(request.url);
+//   const token_hash = searchParams.get("token_hash");
+//   const type = searchParams.get("type") as EmailOtpType | null;
+//   const next = searchParams.get("next") ?? "/";
+//
+//   if (token_hash && type) {
+//     const supabase = await createClient();
+//
+//     const { error } = await supabase.auth.verifyOtp({
+//       type,
+//       token_hash,
+//     });
+//     if (!error) {
+//       redirect(next);
+//     }
+//   }
+//
+//   redirect("/error");
+// }
 
-  if (token_hash && type) {
-    const supabase = await createClient();
+export async function POST(request: NextRequest) {
+  const { email, otp, next = "/" } = await request.json();
+  console.log(email, otp);
 
-    const { error } = await supabase.auth.verifyOtp({
-      type,
-      token_hash,
-    });
-    if (!error) {
-      redirect(next);
-    }
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token: otp,
+    type: "email",
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  redirect("/error");
+  await supabase.auth.updateUser({
+    data: { email_verified: true },
+  });
+
+  const response = NextResponse.redirect(new URL(next, request.url));
+  return response;
 }

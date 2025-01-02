@@ -1,4 +1,7 @@
+"use client";
+
 import ChatNav from "@/components/layout/chat-nav";
+import { createClient } from "@/utils/supabase/client";
 
 export default function ChatLayout({
   children,

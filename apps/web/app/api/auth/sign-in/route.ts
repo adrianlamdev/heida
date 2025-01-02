@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -16,13 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(
-      {
-        message: "Signup successful. Please check your email for confirmation.",
-        user: data.user,
-      },
-      { status: 201 },
-    );
+    return NextResponse.json({ user: data.user, session: data.session });
   } catch (err) {
     return NextResponse.json(
       { error: "Server error occurred" },

@@ -38,17 +38,44 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  console.log("user", user);
+  console.log("session", session);
+
+  const allowedUnauthenticatedRoutes = ["/sign-up", "/sign-in", "/auth/verify"];
 
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !allowedUnauthenticatedRoutes.some((route) =>
+      request.nextUrl.pathname.startsWith(route),
+    )
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/auth/sign-in";
     return NextResponse.redirect(url);
   }
+
+  if (user && !user.user_metadata?.email_verified) {
+    if (!request.nextUrl.pathname.startsWith("/auth/verify")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/verify";
+      url.searchParams.set("email", user.email || "");
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // if (
+  //   !user &&
+  //   !request.nextUrl.pathname.startsWith("/login") &&
+  //   !request.nextUrl.pathname.startsWith("/auth")
+  // ) {
+  //   // no user, potentially respond by redirecting the user to the login page
+  //   const url = request.nextUrl.clone();
+  //   url.pathname = "/login";
+  //   return NextResponse.redirect(url);
+  // }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
