@@ -29,7 +29,7 @@ const Nav = ({ className }: { className?: string }) => {
   };
 
   return (
-    <div className="fixed top-0 inset-x-0 z-50 flex justify-center w-screen bg-background/80 backdrop-blur-sm">
+    <div className="fixed top-0 inset-x-0 z-50 flex justify-center w-screen bg-background/80 backdrop-blur-sm px-4">
       <div className="max-w-5xl w-full">
         <AnimatePresence mode="wait">
           <motion.div

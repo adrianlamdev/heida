@@ -145,7 +145,7 @@ export default function Page() {
       {/* Features Grid */}
       <section className="py-24 px-4 bg-background relative">
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 justify-between">
             <Card>
               <CardContainer>
                 <div className="flex items-center justify-center h-full">
