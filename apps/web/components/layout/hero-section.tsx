@@ -71,6 +71,8 @@ const formVariants = {
   idle: { scale: 1, opacity: 1 },
 };
 
+type FormValues = z.infer<typeof formSchema>;
+
 export default function HeroSection() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -83,7 +85,7 @@ export default function HeroSection() {
     },
   });
 
-  const onSubmit = async (values: FormData) => {
+  const onSubmit = async (values: FormValues) => {
     setError("");
 
     try {
@@ -118,7 +120,11 @@ export default function HeroSection() {
       }, 5000);
     } catch (err) {
       console.error("Submission error:", err);
-      setError(err.message || "Something went wrong. Please try again later.");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Something went wrong. Please try again later.");
+      }
     }
   };
 

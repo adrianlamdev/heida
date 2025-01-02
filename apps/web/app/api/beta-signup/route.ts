@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error?.code === "23505") {
+    if ((error as { code?: string })?.code === "23505") {
       return NextResponse.json(
         { error: "Email already registered" },
         { status: 400 },
