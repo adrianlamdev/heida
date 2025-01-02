@@ -93,7 +93,7 @@ async def search_documents(query: str) -> Dict:
             content_type="text/plain",
         )
 
-        # NOTE: doesn't seem to be needed
+        # FIXME: content metadata not used: can't find metadata in chunks
         # for chunk in chunks:
         #     chunk_idx = chunk.metadata["chunk_index"]
         #     if chunk_idx in content_metadata:

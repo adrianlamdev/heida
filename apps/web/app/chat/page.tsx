@@ -7,6 +7,12 @@ import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
 import "katex/dist/katex.min.css";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@workspace/ui/components/accordion";
+import {
   X,
   File,
   Loader2,
@@ -95,9 +101,136 @@ const CodeBlock = ({ code, language }: CodeBlockProps) => {
     </div>
   );
 };
+interface ThinkingStepProps {
+  id?: string;
+  confidence?: string;
+  children: React.ReactNode;
+}
+
+const ThinkingStep = ({ id, confidence, children }: ThinkingStepProps) => (
+  <div className="mb-4 p-4">
+    <div className="flex justify-between items-center mb-2">
+      <h3 className="font-semibold text-muted-foreground">Step {id}</h3>
+      <span className="text-sm text-muted-foreground">
+        Confidence: {confidence}%
+      </span>
+    </div>
+    <div className="space-y-2">{children}</div>
+  </div>
+);
+
+const ChainOfThoughtMessage = ({ content }: { content: string }) => {
+  // Parse the XML-like structure
+  const getSection = (tag: string) => {
+    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, "s");
+    const match = content.match(regex);
+    return match ? match[1].trim() : "";
+  };
+
+  const getSteps = () => {
+    const stepsRegex = /<step id="(\d+)" confidence="(\d+)">(.*?)<\/step>/gs;
+    const steps = [];
+    let match;
+
+    while ((match = stepsRegex.exec(content)) !== null) {
+      steps.push({
+        id: match[1],
+        confidence: match[2],
+        content: match[3].trim(),
+      });
+    }
+
+    return steps;
+  };
+
+  const thinking = getSection("thinking");
+  const uncertainties = getSection("uncertainties");
+  const solution = getSection("solution");
+  const steps = getSteps();
+
+  // Render the structured content
+  return (
+    <div className="space-y-6">
+      {/* Thinking Section */}
+      {thinking && (
+        <div className="space-y-4">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1">
+              <AccordionTrigger className="text-lg font-bold">
+                Reasoning Process
+              </AccordionTrigger>
+              <AccordionContent>
+                {steps.map((step) => (
+                  <ThinkingStep
+                    key={step.id}
+                    id={step.id}
+                    confidence={step.confidence}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => (
+                          <p className="text-muted-foreground text-sm">
+                            {children}
+                          </p>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc pl-6 space-y-1 text-sm text-muted-foreground">
+                            {children}
+                          </ul>
+                        ),
+                      }}
+                    >
+                      {step.content}
+                    </ReactMarkdown>
+                  </ThinkingStep>
+                ))}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      )}
+
+      {/* Uncertainties Section */}
+      {uncertainties && (
+        <div className="p-4 bg-muted/20 rounded-lg">
+          <h2 className="text-lg font-bold mb-3">Uncertainties & Risks</h2>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            className="text-sm text-muted-foreground"
+          >
+            {uncertainties}
+          </ReactMarkdown>
+        </div>
+      )}
+
+      {/* Solution Section */}
+      {solution && (
+        <div className="p-4 bg-primary/10 rounded-lg">
+          <h2 className="text-lg font-bold mb-3">Solution</h2>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => (
+                <p className="text-sm font-medium">{children}</p>
+              ),
+            }}
+          >
+            {solution}
+          </ReactMarkdown>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // FIXME: currently can't render special properties like \, and [; works for $ and $$
 const MessageContent = ({ content }: { content: string }) => {
+  const hasChainOfThought =
+    content.includes("<thinking>") &&
+    content.includes("</thinking>") &&
+    content.includes("<solution>");
+
   return (
     <motion.div
       className="w-full text-sm md:text-base"
@@ -105,136 +238,144 @@ const MessageContent = ({ content }: { content: string }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[
-          [
-            rehypeMathjax,
-            {
-              strict: false,
-              throwOnError: false,
-              output: "htmlAndMathml",
-            },
-          ],
-        ]}
-        components={{
-          // FIXME: remove key prop from all components
-          p: ({ children, key, ...props }) => (
-            <p key={key} className="mb-4 last:mb-0" {...props}>
-              {children}
-            </p>
-          ),
-          a: ({ children, key, ...props }) => (
-            <a
-              key={key}
-              className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
-              {...props}
-            >
-              {children}
-            </a>
-          ),
-          ul: ({ children, key, ...props }) => (
-            <ul key={key} className="list-disc pl-6 mb-4 space-y-2" {...props}>
-              {children}
-            </ul>
-          ),
-          ol: ({ children, key, ...props }) => (
-            <ol
-              key={key}
-              className="list-decimal pl-6 mb-4 space-y-2"
-              {...props}
-            >
-              {children}
-            </ol>
-          ),
-          li: ({ children, key, ...props }) => (
-            <li key={key} className="mb-1" {...props}>
-              {children}
-            </li>
-          ),
-          h1: ({ children, key, ...props }) => (
-            <h1 key={key} className="text-2xl font-bold mb-4 mt-6" {...props}>
-              {children}
-            </h1>
-          ),
-          h2: ({ children, key, ...props }) => (
-            <h2 key={key} className="text-xl font-bold mb-3 mt-5" {...props}>
-              {children}
-            </h2>
-          ),
-          h3: ({ children, key, ...props }) => (
-            <h3 key={key} className="text-lg font-bold mb-2 mt-4" {...props}>
-              {children}
-            </h3>
-          ),
-          code: ({ inline, className, children, key, ...props }) => {
-            const match = /language-(\w+)/.exec(className || "");
-            const isMath =
-              className?.includes("math-inline") ||
-              className?.includes("math-display") ||
-              className?.includes("language-math");
-
-            if (isMath) {
-              return <span className="katex-wrapper">{children}</span>;
-            }
-
-            return match ? (
-              <CodeBlock
+      {hasChainOfThought ? (
+        <ChainOfThoughtMessage content={content} />
+      ) : (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm, remarkMath]}
+          rehypePlugins={[
+            [
+              rehypeMathjax,
+              {
+                strict: false,
+                throwOnError: false,
+                output: "htmlAndMathml",
+              },
+            ],
+          ]}
+          components={{
+            // FIXME: remove key prop from all components
+            p: ({ children, key, ...props }) => (
+              <p key={key} className="mb-4 last:mb-0" {...props}>
+                {children}
+              </p>
+            ),
+            a: ({ children, key, ...props }) => (
+              <a
                 key={key}
-                code={String(children).replace(/\n$/, "")}
-                language={match[1] || "text"}
-              />
-            ) : (
-              <code
-                key={key}
-                className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
+                className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
                 {...props}
               >
                 {children}
-              </code>
-            );
-          },
-          blockquote: ({ children, key, ...props }) => (
-            <blockquote
-              key={key}
-              className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
-              {...props}
-            >
-              {children}
-            </blockquote>
-          ),
-          table: ({ children, key, ...props }) => (
-            <div key={key} className="overflow-x-auto my-4">
-              <table className="min-w-full divide-y divide-border" {...props}>
+              </a>
+            ),
+            ul: ({ children, key, ...props }) => (
+              <ul
+                key={key}
+                className="list-disc pl-6 mb-4 space-y-2"
+                {...props}
+              >
                 {children}
-              </table>
-            </div>
-          ),
-          th: ({ children, key, ...props }) => (
-            <th
-              key={key}
-              className="px-4 py-2 bg-muted font-semibold text-left"
-              {...props}
-            >
-              {children}
-            </th>
-          ),
-          td: ({ children, key, ...props }) => (
-            <td
-              key={key}
-              className="px-4 py-2 border-t border-border"
-              {...props}
-            >
-              {children}
-            </td>
-          ),
-          hr: ({ key, ...props }) => (
-            <hr key={key} className="my-6 border-border" {...props} />
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+              </ul>
+            ),
+            ol: ({ children, key, ...props }) => (
+              <ol
+                key={key}
+                className="list-decimal pl-6 mb-4 space-y-2"
+                {...props}
+              >
+                {children}
+              </ol>
+            ),
+            li: ({ children, key, ...props }) => (
+              <li key={key} className="mb-1" {...props}>
+                {children}
+              </li>
+            ),
+            h1: ({ children, key, ...props }) => (
+              <h1 key={key} className="text-2xl font-bold mb-4 mt-6" {...props}>
+                {children}
+              </h1>
+            ),
+            h2: ({ children, key, ...props }) => (
+              <h2 key={key} className="text-xl font-bold mb-3 mt-5" {...props}>
+                {children}
+              </h2>
+            ),
+            h3: ({ children, key, ...props }) => (
+              <h3 key={key} className="text-lg font-bold mb-2 mt-4" {...props}>
+                {children}
+              </h3>
+            ),
+            code: ({ inline, className, children, key, ...props }) => {
+              const match = /language-(\w+)/.exec(className || "");
+              const isMath =
+                className?.includes("math-inline") ||
+                className?.includes("math-display") ||
+                className?.includes("language-math");
+
+              if (isMath) {
+                return <span className="katex-wrapper">{children}</span>;
+              }
+
+              return match ? (
+                <CodeBlock
+                  key={key}
+                  code={String(children).replace(/\n$/, "")}
+                  language={match[1] || "text"}
+                />
+              ) : (
+                <code
+                  key={key}
+                  className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            },
+            blockquote: ({ children, key, ...props }) => (
+              <blockquote
+                key={key}
+                className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
+                {...props}
+              >
+                {children}
+              </blockquote>
+            ),
+            table: ({ children, key, ...props }) => (
+              <div key={key} className="overflow-x-auto my-4">
+                <table className="min-w-full divide-y divide-border" {...props}>
+                  {children}
+                </table>
+              </div>
+            ),
+            th: ({ children, key, ...props }) => (
+              <th
+                key={key}
+                className="px-4 py-2 bg-muted font-semibold text-left"
+                {...props}
+              >
+                {children}
+              </th>
+            ),
+            td: ({ children, key, ...props }) => (
+              <td
+                key={key}
+                className="px-4 py-2 border-t border-border"
+                {...props}
+              >
+                {children}
+              </td>
+            ),
+            hr: ({ key, ...props }) => (
+              <hr key={key} className="my-6 border-border" {...props} />
+            ),
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      )}
     </motion.div>
   );
 };

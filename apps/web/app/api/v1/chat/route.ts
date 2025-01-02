@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
     const messages = JSON.parse(formData.get("messages") as string) || [];
     const apiKey = (formData.get("apiKey") as string) || "";
     const model = (formData.get("model") as string) || "";
+    const cotEnabled = (formData.get("cotEnabled") as string) === "true";
     const webSearchEnabled =
       (formData.get("webSearchEnabled") as string) === "true";
     const attachments: File[] = [];
@@ -129,7 +130,6 @@ export async function POST(req: NextRequest) {
           if (searchResponse.ok) {
             const searchData = await searchResponse.json();
 
-            // Add search results to messages as system context
             if (searchData.results && searchData.results.length > 0) {
               const searchContext = searchData.results
                 .map((result: any) => ({
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
                   source: result.metadata.url,
                   title: result.metadata.title,
                 }))
-                .slice(0, 3); // Limit to top 3 results
+                .slice(0, 3);
 
               messages.push({
                 role: "system",
@@ -192,11 +192,81 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const response = await openai.chat.completions.create({
-      model: model,
-      messages: messages,
-      stream: true,
-    });
+    let response;
+
+    // NOTE: wishcom CoT
+    if (cotEnabled) {
+      response = await openai.chat.completions.create({
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content: `You are an advanced reasoning engine that approaches problems through structured decomposition and explicit chain-of-thought analysis. Your responses should demonstrate clear, logical progression from initial understanding to final conclusion.
+Keep responses conversational and avoid mechanical phrases like "clear, concise answer" or "key supporting points." Present your analysis as a natural flow of thought rather than a rigid template.
+
+Format ALL responses using this exact structure:
+
+<thinking>
+  <step id="1" confidence="0-100">
+    - State your initial understanding of the problem
+    - List key assumptions
+    - Define scope and constraints
+    CALCULATIONS: [Show your work if numerical]
+    REASONING: [Explain your logic]
+  </step>
+
+  <step id="2" confidence="0-100">
+    - Build on previous step
+    - Analyze implications
+    - Consider alternatives
+    CALCULATIONS: [Show your work if numerical]
+    REASONING: [Explain your logic]
+  </step>
+
+  <step id="3" confidence="0-100">
+    - Test conclusions
+    - Validate assumptions
+    - Identify potential issues
+    CALCULATIONS: [Show your work if numerical]
+    REASONING: [Explain your logic]
+  </step>
+
+  [additional steps as needed]
+</thinking>
+
+<uncertainties>
+  - List key unknowns
+  - Identify potential risks
+  - Note areas needing more data
+</uncertainties>
+
+<solution>
+  - Clear, concise answer
+  - Key supporting points
+  - If applicable, next steps
+</solution>
+
+Requirements:
+1. ALWAYS show explicit calculations
+2. ALWAYS include confidence levels (0-100%)
+3. ALWAYS explain reasoning
+4. ALWAYS list assumptions
+5. ALWAYS structure using the XML tags above
+6. If calculations involve currency, show in USD and mention the currency
+7. Round numbers to 2 decimal places unless precision needed`,
+          },
+          ...messages,
+        ],
+        temperature: 0.2,
+        stream: true,
+      });
+    } else {
+      response = await openai.chat.completions.create({
+        model: model,
+        messages: messages,
+        stream: true,
+      });
+    }
 
     const stream = new ReadableStream({
       async start(controller) {
