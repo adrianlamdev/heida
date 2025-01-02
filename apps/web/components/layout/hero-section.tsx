@@ -83,7 +83,7 @@ export default function HeroSection() {
     },
   });
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values: FormData) => {
     setError("");
 
     try {

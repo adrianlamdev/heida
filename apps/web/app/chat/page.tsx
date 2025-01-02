@@ -124,7 +124,7 @@ const ChainOfThoughtMessage = ({ content }: { content: string }) => {
   const getSection = (tag: string) => {
     const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, "s");
     const match = content.match(regex);
-    return match ? match[1].trim() : "";
+    return match ? match[1]?.trim() : "";
   };
 
   const getSteps = () => {
@@ -136,7 +136,7 @@ const ChainOfThoughtMessage = ({ content }: { content: string }) => {
       steps.push({
         id: match[1],
         confidence: match[2],
-        content: match[3].trim(),
+        content: match[3]?.trim(),
       });
     }
 
@@ -148,7 +148,6 @@ const ChainOfThoughtMessage = ({ content }: { content: string }) => {
   const solution = getSection("solution");
   const steps = getSteps();
 
-  // Render the structured content
   return (
     <div className="space-y-6">
       {/* Thinking Section */}
@@ -307,7 +306,7 @@ const MessageContent = ({ content }: { content: string }) => {
                 {children}
               </h3>
             ),
-            code: ({ inline, className, children, key, ...props }) => {
+            code: ({ className, children, key, ...props }) => {
               const match = /language-(\w+)/.exec(className || "");
               const isMath =
                 className?.includes("math-inline") ||
