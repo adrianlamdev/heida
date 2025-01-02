@@ -110,96 +110,110 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (webSearchEnabled) {
-      const needsWebSearch = await shouldPerformWebSearch(messages, openai);
-      console.log("Web search enabled:", webSearchEnabled);
-      console.log("Needs web search:", needsWebSearch);
-
-      if (needsWebSearch) {
-        const originalQuery = messages[messages.length - 1]?.content;
-        const optimizedQuery = await rewriteSearchQuery(originalQuery, openai);
-
-        console.log("Original query:", originalQuery);
-        console.log("Optimized query:", optimizedQuery);
-
-        try {
-          const searchResponse = await fetch(
-            `${RAG_API_URL}/api/v1/search?query=${encodeURIComponent(optimizedQuery)}`,
-          );
-          if (searchResponse.ok) {
-            const searchData = await searchResponse.json();
-
-            // Add search results to messages as system context
-            if (searchData.results && searchData.results.length > 0) {
-              const searchContext = searchData.results
-                .map((result: any) => ({
-                  content: result.content,
-                  source: result.metadata.url,
-                  title: result.metadata.title,
-                }))
-                .slice(0, 3); // Limit to top 3 results
-
-              messages.push({
-                role: "system",
-                content: `Here is some relevant information from the web:\n\n${searchContext
-                  .map(
-                    (ctx: any) =>
-                      `Source: ${ctx.title} (${ctx.source})\n${ctx.content}`,
-                  )
-                  .join("\n\n")}`,
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Web search error:", error);
-        }
-      }
-    }
-
-    if (attachments.length > 0) {
-      const query = messages[messages.length - 1]?.content;
-      if (!query || typeof query !== "string") {
-        return NextResponse.json(
-          { error: "Query must be provided in the messages" },
-          { status: 400 },
-        );
-      }
-
-      console.log("Query:", query, "Files:", attachments);
-
-      for (const file of attachments) {
-        const formDataToSend = new FormData();
-        formDataToSend.append("query", query);
-        formDataToSend.append("file", file);
-
-        const response = await fetch(`${RAG_API_URL}/api/v1/retrieve`, {
-          method: "POST",
-          body: formDataToSend,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to upload file: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        messages.push({
-          role: "system",
-          content: `Query: ${query}\nFile: ${file.name}\nRetrieved content: ${JSON.stringify(
-            data.results,
-          )}`,
-        });
-      }
-    }
-
-    const response = await openai.chat.completions.create({
-      model: model,
-      messages: messages,
-      stream: true,
-    });
-
     const stream = new ReadableStream({
       async start(controller) {
+        let searchResults = null;
+
+        if (webSearchEnabled) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              `data: ${JSON.stringify({ status: "starting_search" })}\n\n`,
+            ),
+          );
+
+          const needsWebSearch = await shouldPerformWebSearch(messages, openai);
+
+          if (needsWebSearch) {
+            const originalQuery = messages[messages.length - 1]?.content;
+            const optimizedQuery = await rewriteSearchQuery(
+              originalQuery,
+              openai,
+            );
+
+            try {
+              const searchUrl = `${RAG_API_URL}/api/v1/search?query=${encodeURIComponent(optimizedQuery)}`;
+
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify({ status: "fetching_results" })}\n\n`,
+                ),
+              );
+
+              const searchResponse = await fetch(searchUrl);
+
+              if (!searchResponse.ok) {
+                throw new Error(`Search failed: ${searchResponse.statusText}`);
+              }
+
+              const reader = searchResponse.body?.getReader();
+              if (!reader) {
+                throw new Error("No response body from search API");
+              }
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = new TextDecoder().decode(value);
+                const lines = chunk.split("\n").filter((line) => line.trim());
+
+                for (const line of lines) {
+                  if (line.startsWith("data: ")) {
+                    const data = JSON.parse(line.slice(6));
+
+                    if (data.status) {
+                      controller.enqueue(
+                        new TextEncoder().encode(
+                          `data: ${JSON.stringify({ status: data.status })}\n\n`,
+                        ),
+                      );
+                    }
+
+                    if (data.results) {
+                      searchResults = data.results;
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Web search error:", error);
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `data: ${JSON.stringify({ error: "Web search failed" })}\n\n`,
+                ),
+              );
+            }
+          }
+        }
+
+        controller.enqueue(
+          new TextEncoder().encode(
+            `data: ${JSON.stringify({ status: "generating" })}\n\n`,
+          ),
+        );
+
+        const augmentedMessages = [...messages];
+        if (searchResults) {
+          const searchContext = {
+            role: "system",
+            content: `Here are relevant search results to help answer the query:\n\n${searchResults
+              .map(
+                (result: any) =>
+                  `Source: ${result.metadata.url}\n${result.content}\n---\n`,
+              )
+              .join("\n")}`,
+          };
+          augmentedMessages.push(searchContext);
+        }
+
+        console.log("Augmented messages:", augmentedMessages);
+
+        const response = await openai.chat.completions.create({
+          model: model,
+          messages: augmentedMessages,
+          stream: true,
+        });
+
         for await (const part of response) {
           const chunk = part.choices[0]?.delta?.content || "";
           if (chunk) {
@@ -209,6 +223,7 @@ export async function POST(req: NextRequest) {
             controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
           }
         }
+
         controller.close();
       },
     });

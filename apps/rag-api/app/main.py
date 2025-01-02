@@ -1,9 +1,11 @@
 from typing import Dict
 
+from starlette.responses import StreamingResponse
 import uvicorn
 from duckduckgo_search import DDGS  # NOTE: probably remove to switch to brave
 from langchain_community.document_loaders import BraveSearchLoader
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import json
 
 from app.core import SUPPORTED_CONTENT_TYPES, logger
 from app.services import DocumentProcessor, Reranker, Retriever
@@ -18,7 +20,7 @@ app = FastAPI()
 
 
 @app.get("/api/v1/search")
-async def search_documents(query: str) -> Dict:
+async def search_documents(query: str) -> StreamingResponse:
     """
     Endpoint to perform document retrieval based on a query.
 
@@ -26,12 +28,11 @@ async def search_documents(query: str) -> Dict:
         query (str): The search query to retrieve relevant content
 
     Returns:
-        dict: Contains the query, retrieval results, and result count
+        StreamingResponse: Server-sent events with status updates and results
 
     Raises:
-        HTTPException: If query is empty
+        HTTPException: If query is empty or if an error occurs
     """
-
     if not query or query.isspace():
         logger.warning("Empty query")
         raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -46,81 +47,94 @@ async def search_documents(query: str) -> Dict:
                 status_code=500, detail="Missing Brave API key in environment"
             )
 
-        loader = BraveSearchLoader(
-            query=query, api_key=BRAVE_API_KEY, search_kwargs={"count": 3}
-        )
+        async def event_generator():
+            try:
+                yield f"data: {json.dumps({'status': 'searching'})}\n\n"
 
-        raw_results = loader.load()
+                loader = BraveSearchLoader(
+                    query=query, api_key=BRAVE_API_KEY, search_kwargs={"count": 3}
+                )
+                raw_results = loader.load()
 
-        logger.info("Search results loaded", count=len(raw_results))
+                yield f"data: {json.dumps({'status': 'found_results'})}\n\n"
+                logger.info("Search results loaded", count=len(raw_results))
 
-        if not raw_results:
-            logger.warning("No results found", query=query)
-            return {"query": query, "results": [], "count": 0}
+                urls = []
+                url_metadata = {}
 
-        urls = []
-        url_metadata = {}
+                for i, result in enumerate(raw_results):
+                    url = result.metadata["link"]
+                    urls.append(url)
+                    url_metadata[url] = {
+                        "title": result.metadata["title"],
+                        "url": url,
+                        "source": "brave",
+                        "result_index": i,
+                    }
 
-        for i, result in enumerate(raw_results):
-            url = result.metadata["link"]
-            urls.append(url)
-            url_metadata[url] = {
-                "title": result.metadata["title"],
-                "url": url,
-                "source": "brave",
-                "result_index": i,
-            }
+                yield f"data: {json.dumps({'status': 'indexing'})}\n\n"
 
-        fetcher = WebFetcher()
-        url_contents = await fetcher.fetch_all(urls)
+                fetcher = WebFetcher()
+                url_contents = await fetcher.fetch_all(urls)
 
-        combined_content = ""
-        content_metadata = {}
+                yield f"data: {json.dumps({'status': 'fetched'})}\n\n"
 
-        for i, (url, (title, content)) in enumerate(url_contents.items()):
-            if content:
-                content_metadata[i] = {
-                    "title": title or url_metadata[url]["title"],
-                    "url": url,
-                    "source": "web",
-                    "result_index": i,
-                }
-                combined_content += f"{content}\n\n"
+                combined_content = ""
+                content_metadata = {}
 
-        processor = DocumentProcessor()
-        chunks, embeddings, bm25 = processor.process_documents(
-            combined_content.encode("utf-8"),
-            content_type="text/plain",
-        )
+                for i, (url, (title, content)) in enumerate(url_contents.items()):
+                    if content:
+                        content_metadata[i] = {
+                            "title": title or url_metadata[url]["title"],
+                            "url": url,
+                            "source": "web",
+                            "result_index": i,
+                        }
+                        combined_content += f"{content}\n\n"
 
-        # NOTE: doesn't seem to be needed
-        # for chunk in chunks:
-        #     chunk_idx = chunk.metadata["chunk_index"]
-        #     if chunk_idx in content_metadata:
-        #         chunk.metadata.update(content_metadata[chunk_idx])
+                yield f"data: {json.dumps({'status': 'running_rag'})}\n\n"
 
-        retriever = Retriever(processor.model)
-        results = retriever.retrieve(
-            query=query,
-            chunks=chunks,
-            embeddings=embeddings,
-            bm25=bm25,
-            top_k=3,
-        )
-        reranker = Reranker()
-        reranked_results = reranker.rerank(
-            query, [result["chunk"] for result in results]
-        )
+                processor = DocumentProcessor()
+                chunks, embeddings, bm25 = processor.process_documents(
+                    combined_content.encode("utf-8"),
+                    content_type="text/plain",
+                )
 
-        search_results = [
-            {
-                "content": result["chunk"].content,
-                "metadata": result["chunk"].metadata,
-                "score": result.get("score", 0),
-            }
-            for result in reranked_results
-        ]
-        return {"query": query, "results": search_results, "count": len(search_results)}
+                retriever = Retriever(processor.model)
+                results = retriever.retrieve(
+                    query=query,
+                    chunks=chunks,
+                    embeddings=embeddings,
+                    bm25=bm25,
+                    top_k=3,
+                )
+
+                reranker = Reranker()
+                reranked_results = reranker.rerank(
+                    query, [result["chunk"] for result in results]
+                )
+
+                search_results = [
+                    {
+                        "content": result["chunk"].content,
+                        "metadata": result["chunk"].metadata,
+                        "score": result.get("score", 0),
+                    }
+                    for result in reranked_results
+                ]
+
+                yield f"data: {json.dumps({
+                    'query': query,
+                    'results': search_results,
+                    'count': len(search_results),
+                    'status': "completed"
+                })}\n\n"
+
+            except Exception as e:
+                logger.error("Event generation failed", error=str(e))
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
 
     except Exception as e:
         logger.error(
