@@ -1,5 +1,5 @@
-import Nav from "@/components/nav";
-import Footer from "@/components/footer";
+import Footer from "@/components/layout/footer";
+import Nav from "@/components/layout/nav";
 
 export default function ChatLayout({
   children,

@@ -1,4 +1,4 @@
-import ChatNav from "@/components/chat-nav";
+import ChatNav from "@/components/layout/chat-nav";
 
 export default function ChatLayout({
   children,

@@ -1,6 +1,6 @@
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 export default function WaitlistSection() {
   return (
@@ -13,16 +13,12 @@ export default function WaitlistSection() {
           Be among the first to experience the future of AI interaction. Limited
           spots available for our private beta.
         </p>
-        <div className="flex gap-4 justify-center items-center max-w-lg">
-          <Input
-            placeholder="you@example.com"
-            className="flex-1 h-10 bg-background/50 border-primary/20 backdrop-blur-sm"
-          />
+        <Link href="#hero">
           <Button size="lg" className="h-10 group px-3">
             Join Beta
             <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
           </Button>
-        </div>
+        </Link>
       </div>
     </section>
   );
