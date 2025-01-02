@@ -2,7 +2,8 @@
 
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { vs2015 } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
 import "katex/dist/katex.min.css";
