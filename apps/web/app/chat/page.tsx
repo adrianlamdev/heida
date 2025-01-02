@@ -224,6 +224,50 @@ const ChainOfThoughtMessage = ({ content }: { content: string }) => {
   );
 };
 
+const STATUS_MESSAGES: { [key: string]: string } = {
+  // Search phase
+  starting_search: "Preparing web search...",
+  searching: "Searching the web for relevant information...",
+  found_results: "Found relevant sources...",
+
+  // Processing phase
+  indexing: "Processing search results...",
+  fetched: "Organizing information...",
+  fetching_results: "Retrieving detailed information...",
+
+  // Generation phase
+  running_rag: "Analyzing context...",
+  completed: "",
+};
+
+interface StatusMessageProps {
+  status: string;
+  visible: boolean;
+}
+
+const StatusMessage = ({ status, visible }: StatusMessageProps) => {
+  const message = STATUS_MESSAGES[status] || "Processing your request...";
+
+  return (
+    <AnimatePresence>
+      {visible && status && status !== "completed" && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="absolute flex items-center justify-center z-50 pointer-events-none -top-14"
+        >
+          <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-secondary/70 border backdrop-blur-sm shadow-inner">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm font-medium">{message}</span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 // FIXME: currently can't render special properties like \, and [; works for $ and $$
 const MessageContent = ({ content }: { content: string }) => {
   const hasChainOfThought =
@@ -241,140 +285,125 @@ const MessageContent = ({ content }: { content: string }) => {
       {hasChainOfThought ? (
         <ChainOfThoughtMessage content={content} />
       ) : (
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[
-            [
-              rehypeMathjax,
-              {
-                strict: false,
-                throwOnError: false,
-                output: "htmlAndMathml",
-              },
-            ],
-          ]}
-          components={{
-            // FIXME: remove key prop from all components
-            p: ({ children, key, ...props }) => (
-              <p key={key} className="mb-4 last:mb-0" {...props}>
-                {children}
-              </p>
-            ),
-            a: ({ children, key, ...props }) => (
-              <a
-                key={key}
-                className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
-                {...props}
-              >
-                {children}
-              </a>
-            ),
-            ul: ({ children, key, ...props }) => (
-              <ul
-                key={key}
-                className="list-disc pl-6 mb-4 space-y-2"
-                {...props}
-              >
-                {children}
-              </ul>
-            ),
-            ol: ({ children, key, ...props }) => (
-              <ol
-                key={key}
-                className="list-decimal pl-6 mb-4 space-y-2"
-                {...props}
-              >
-                {children}
-              </ol>
-            ),
-            li: ({ children, key, ...props }) => (
-              <li key={key} className="mb-1" {...props}>
-                {children}
-              </li>
-            ),
-            h1: ({ children, key, ...props }) => (
-              <h1 key={key} className="text-2xl font-bold mb-4 mt-6" {...props}>
-                {children}
-              </h1>
-            ),
-            h2: ({ children, key, ...props }) => (
-              <h2 key={key} className="text-xl font-bold mb-3 mt-5" {...props}>
-                {children}
-              </h2>
-            ),
-            h3: ({ children, key, ...props }) => (
-              <h3 key={key} className="text-lg font-bold mb-2 mt-4" {...props}>
-                {children}
-              </h3>
-            ),
-            code: ({ className, children, key, ...props }) => {
-              const match = /language-(\w+)/.exec(className || "");
-              const isMath =
-                className?.includes("math-inline") ||
-                className?.includes("math-display") ||
-                className?.includes("language-math");
-
-              if (isMath) {
-                return <span className="katex-wrapper">{children}</span>;
-              }
-
-              return match ? (
-                <CodeBlock
-                  key={key}
-                  code={String(children).replace(/\n$/, "")}
-                  language={match[1] || "text"}
-                />
-              ) : (
-                <code
-                  key={key}
-                  className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
-                  {...props}
-                >
-                  {children}
-                </code>
-              );
+         <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[
+          [
+            rehypeMathjax,
+            {
+              strict: false,
+              throwOnError: false,
+              output: "htmlAndMathml",
             },
-            blockquote: ({ children, key, ...props }) => (
-              <blockquote
-                key={key}
-                className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
+          ],
+        ]}
+        components={{
+          p: ({ children, ...props }) => (
+            <p className="mb-4 last:mb-0" {...props}>
+              {children}
+            </p>
+          ),
+          a: ({ children, ...props }) => (
+            <a
+              className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
+              {...props}
+            >
+              {children}
+            </a>
+          ),
+          ul: ({ children, ...props }) => (
+            <ul className="list-disc pl-6 mb-4 space-y-2" {...props}>
+              {children}
+            </ul>
+          ),
+          ol: ({ children, ...props }) => (
+            <ol className="list-decimal pl-6 mb-4 space-y-2" {...props}>
+              {children}
+            </ol>
+          ),
+          li: ({ children, ...props }) => (
+            <li className="mb-1" {...props}>
+              {children}
+            </li>
+          ),
+          h1: ({ children, ...props }) => (
+            <h1 className="text-2xl font-bold mb-4 mt-6" {...props}>
+              {children}
+            </h1>
+          ),
+          h2: ({ children, ...props }) => (
+            <h2 className="text-xl font-bold mb-3 mt-5" {...props}>
+              {children}
+            </h2>
+          ),
+          h3: ({ children, ...props }) => (
+            <h3 className="text-lg font-bold mb-2 mt-4" {...props}>
+              {children}
+            </h3>
+          ),
+          code: ({ className, children, ...props }) => {
+            const match = /language-(\w+)/.exec(className || "");
+            const isMath =
+              className?.includes("math-inline") ||
+              className?.includes("math-display") ||
+              className?.includes("language-math");
+
+            if (isMath) {
+              return <span className="katex-wrapper">{children}</span>;
+            }
+
+            return match ? (
+              <CodeBlock
+                code={String(children).replace(/\n$/, "")}
+                language={match[1] || "text"}
+              />
+            ) : (
+              <code
+                className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
                 {...props}
               >
                 {children}
-              </blockquote>
-            ),
-            table: ({ children, key, ...props }) => (
-              <div key={key} className="overflow-x-auto my-4">
-                <table className="min-w-full divide-y divide-border" {...props}>
-                  {children}
-                </table>
-              </div>
-            ),
-            th: ({ children, key, ...props }) => (
-              <th
-                key={key}
-                className="px-4 py-2 bg-muted font-semibold text-left"
-                {...props}
-              >
+              </code>
+            );
+          },
+          blockquote: ({ children, ...props }) => (
+            <blockquote
+              className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
+              {...props}
+            >
+              {children}
+            </blockquote>
+          ),
+          table: ({ children, ...props }) => (
+            <div className="overflow-x-auto my-4">
+              <table className="min-w-full divide-y divide-border" {...props}>
                 {children}
-              </th>
-            ),
-            td: ({ children, key, ...props }) => (
-              <td
-                key={key}
-                className="px-4 py-2 border-t border-border"
-                {...props}
-              >
-                {children}
-              </td>
-            ),
-            hr: ({ key, ...props }) => (
-              <hr key={key} className="my-6 border-border" {...props} />
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+              </table>
+            </div>
+          ),
+          th: ({ children, ...props }) => (
+            <th
+              className="px-4 py-2 font-normal text-left text-muted-foreground tracking-tight hover:bg-accent transition-colors"
+              {...props}
+            >
+              {children}
+            </th>
+          ),
+          td: ({ children, ...props }) => (
+            <td
+              className="px-4 py-2 border-t border-border hover:bg-accent transition-colors"
+              {...props}
+            >
+              {children}
+            </td>
+          ),
+          hr: ({ ...props }) => (
+            <hr className="my-6 border-border" {...props} />
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
       )}
     </motion.div>
   );
@@ -391,6 +420,8 @@ export default function ChatPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
+  const [status, setStatus] = useState("");
+  const [showStatus, setShowStatus] = useState(false);
 
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
@@ -434,8 +465,7 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    // NOTE: maybe remove this since it's annoying? will survey
-    //messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -451,6 +481,8 @@ export default function ChatPage() {
 
     try {
       setIsLoading(true);
+      setShowStatus(true);
+      setStatus("");
 
       abortControllerRef.current = new AbortController();
 
@@ -458,8 +490,6 @@ export default function ChatPage() {
         role: "user",
         content: input.trim(),
       };
-
-      console.log("User message:", userMessage);
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
@@ -499,6 +529,16 @@ export default function ChatPage() {
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             const data = JSON.parse(line.slice(6));
+
+            if (data.status) {
+              if (data.status === "completed") {
+                setStatus("");
+                setShowStatus(false);
+                break;
+              }
+              setStatus(data.status);
+            }
+
             if (data.choices?.[0]?.delta?.content) {
               assistantMessage += data.choices[0].delta.content;
               setMessages((prev) => {
@@ -526,8 +566,9 @@ export default function ChatPage() {
       }
     } finally {
       setIsLoading(false);
+      setStatus("");
+      setShowStatus(false);
       abortControllerRef.current = null;
-      console.log("handleSubmit completed");
     }
   };
 
@@ -574,14 +615,9 @@ export default function ChatPage() {
           <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-28 md:pb-36">
             {messages.length === 0 ? (
               <div className="h-full w-full flex items-center justify-center flex-col gap-2">
-                <div className="flex items-center gap-4">
-                  <span className="shrink-0 bg-muted rounded-full p-2 flex items-center justify-center">
-                    👋
-                  </span>
-                  <h2 className="text-2xl font-bold tracking-tight">
-                    Let&apos; get started.
-                  </h2>
-                </div>
+                <h2 className="text-3xl font-bold tracking-tight">
+                  Let&apos; get started.
+                </h2>
                 <p>How can I help you today?</p>
               </div>
             ) : (
@@ -613,7 +649,8 @@ export default function ChatPage() {
         className="fixed bottom-4 md:bottom-6 left-0 right-0 max-w-3xl mx-auto px-4 z-10 rounded-full mb-4"
       >
         <div className="max-w-3xl mx-auto flex gap-2 w-full">
-          <div className="flex-1 flex items-center bg-secondary/80 transition-colors focus-within:bg-secondary rounded-full w-full p-1 pl-2 relative border shadow-lg gap-2">
+          <div className="flex-1 flex justify-center items-center bg-secondary/80 transition-colors focus-within:bg-secondary rounded-full w-full p-1 pl-2 relative border shadow-lg gap-2">
+            <StatusMessage status={status} visible={showStatus} />
             <div className="flex flex-col">
               <div className="flex items-center">
                 {/* <Button */}
@@ -655,6 +692,7 @@ export default function ChatPage() {
                 >
                   <Search className={`h-5 w-5 ${webSearchEnabled ? "" : ""}`} />
                   <span>Web Search</span>
+                  {webSearchEnabled && <X className="h-4 w-4" />}
                 </Button>
               </div>
 
@@ -707,22 +745,41 @@ export default function ChatPage() {
               className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
             />
             <AnimatePresence mode="wait">
-              {isLoading ? (
-                <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-full">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                </div>
-              ) : (
+              <motion.div
+                key={isLoading ? "loading" : "idle"}
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+              >
                 <Button
-                  type="submit"
+                  type="button"
                   size="icon"
                   className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center"
                   disabled={
-                    isLoading || (!input.trim() && attachedFiles.length === 0)
+                    !isLoading && !input.trim() && attachedFiles.length === 0
                   }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (isLoading) {
+                      if (abortControllerRef.current) {
+                        abortControllerRef.current.abort();
+                        setIsLoading(false);
+                        setStatus("");
+                        setShowStatus(false);
+                      }
+                    } else {
+                      handleSubmit(e);
+                    }
+                  }}
                 >
-                  <ArrowUp className="h-5 w-5" />
+                  {isLoading ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <ArrowUp className="h-5 w-5" />
+                  )}
                 </Button>
-              )}
+              </motion.div>
             </AnimatePresence>
           </div>
         </div>
