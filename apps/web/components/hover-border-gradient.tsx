@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { motion } from "framer-motion";
 import { cn } from "@workspace/ui/lib/utils";

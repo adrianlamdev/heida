@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type React from "react";
 import { cn } from "@workspace/ui/lib/utils";
 
 // TODO: remove
