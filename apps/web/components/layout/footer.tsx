@@ -26,7 +26,7 @@ const socialLinks = [
     ),
   },
   {
-    href: "htttps://github.com/adrianlamdev/heida",
+    href: "https://github.com/adrianlamdev/heida",
     icon: (
       <svg
         className="h-5 w-5"
