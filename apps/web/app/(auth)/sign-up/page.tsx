@@ -5,8 +5,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Link, Loader2 } from "lucide-react";
-
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Card } from "@workspace/ui/components/card";

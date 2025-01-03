@@ -25,33 +25,33 @@ export default function VerifyPage() {
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function sendOtp(email: string) {
-      try {
-        const response = await fetch(`/api/auth/resend-otp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to resend OTP");
-        }
-      } catch (error) {
-        setError(
-          error instanceof Error ? error.message : "Failed to resend OTP",
-        );
-      }
-    }
-
-    if (email) {
-      sendOtp(email);
-    } else {
-      router.push("/sign-in");
-    }
-  });
+  // useEffect(() => {
+  //   async function sendOtp(email: string) {
+  //     try {
+  //       const response = await fetch(`/api/auth/resend-otp`, {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({ email }),
+  //       });
+  //
+  //       if (!response.ok) {
+  //         throw new Error("Failed to resend OTP");
+  //       }
+  //     } catch (error) {
+  //       setError(
+  //         error instanceof Error ? error.message : "Failed to resend OTP",
+  //       );
+  //     }
+  //   }
+  //
+  //   if (email) {
+  //     sendOtp(email);
+  //   } else {
+  //     router.push("/sign-in");
+  //   }
+  // });
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -61,6 +61,12 @@ export default function VerifyPage() {
       return () => clearInterval(timer);
     }
   }, [cooldown]);
+
+  useEffect(() => {
+    if (otp.length === 6) {
+      handleVerify();
+    }
+  }, [otp]);
 
   const handleVerify = async () => {
     setIsVerifyingOtp(true);
@@ -81,7 +87,7 @@ export default function VerifyPage() {
         throw new Error(data.error || "Failed to verify OTP");
       }
 
-      router.push("/chat");
+      router.push(data.redirectTo || "/chat");
     } catch (error) {
       console.error("Verification error:", error);
       setError(error instanceof Error ? error.message : "Failed to verify OTP");
@@ -147,12 +153,7 @@ export default function VerifyPage() {
                 maxLength={6}
                 value={otp}
                 disabled={isVerifyingOtp}
-                onChange={(value) => {
-                  setOtp(value);
-                  if (otp.length === 6) {
-                    handleVerify();
-                  }
-                }}
+                onChange={(value) => setOtp(value)}
               >
                 <InputOTPGroup>
                   {Array.from({ length: 6 }, (_, i) => (

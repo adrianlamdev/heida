@@ -38,13 +38,16 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  console.log("user", user);
-  console.log("session", session);
 
-  const allowedUnauthenticatedRoutes = ["/sign-up", "/sign-in", "/auth/verify"];
+  console.log(user?.user_metadata.email_verified);
+
+  const allowedUnauthenticatedRoutes = [
+    "/sign-up",
+    "/sign-in",
+    "/auth/verify",
+    "/auth/confirm",
+    "/auth/resend-otp",
+  ];
 
   if (
     !user &&
@@ -54,15 +57,29 @@ export async function updateSession(request: NextRequest) {
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/sign-in";
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
   }
 
-  if (user && !user.user_metadata?.email_verified) {
-    if (!request.nextUrl.pathname.startsWith("/auth/verify")) {
+  if (user) {
+    const isEmailVerified = user.user_metadata?.email_verified;
+
+    if (
+      !isEmailVerified &&
+      !request.nextUrl.pathname.startsWith("/auth/verify")
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/verify";
       url.searchParams.set("email", user.email || "");
-      return NextResponse.redirect(url);
+      url.searchParams.set("next", request.nextUrl.pathname);
+      const response = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        response.cookies.set(cookie.name, cookie.value);
+      });
+      return response;
     }
   }
 

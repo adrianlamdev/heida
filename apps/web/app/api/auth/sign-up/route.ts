@@ -23,13 +23,22 @@ export async function POST(request: NextRequest) {
     password,
   });
 
-  console.log("signUpData", signUpData);
-
   if (signUpError) {
     return NextResponse.json({ error: signUpError.message }, { status: 400 });
   }
 
   if (signUpData.user) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     await supabase.auth.updateUser({
       data: {
         email_verified: false,

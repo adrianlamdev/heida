@@ -23,7 +23,7 @@ import { createClient } from "@/utils/supabase/server";
 // }
 
 export async function POST(request: NextRequest) {
-  const { email, otp, next = "/" } = await request.json();
+  const { email, otp, next = "/chat" } = await request.json();
   console.log(email, otp);
 
   const supabase = await createClient();
@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
     data: { email_verified: true },
   });
 
-  const response = NextResponse.redirect(new URL(next, request.url));
-  return response;
+  return NextResponse.json({
+    success: true,
+    redirectTo: next,
+  });
 }
