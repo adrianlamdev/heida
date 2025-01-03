@@ -39,16 +39,88 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Check if user is trying to access auth pages while signed in
+  if (
+    user &&
+    (request.nextUrl.pathname === "/sign-in" ||
+      request.nextUrl.pathname === "/sign-up")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
+  }
+
+  // Check if verify route has empty email parameter
+  if (
+    request.nextUrl.pathname === "/verify" &&
+    !request.nextUrl.searchParams.get("email")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-up";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
+  }
+
+  const allowedUnauthenticatedRoutes = [
+    "/sign-up",
+    "/sign-in",
+    "/verify",
+    "/forgot-password",
+    "/reset-password",
+  ];
+
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !allowedUnauthenticatedRoutes.some((route) =>
+      request.nextUrl.pathname.startsWith(route),
+    )
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.pathname = "/sign-in";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
   }
+
+  if (user) {
+    const isEmailVerified = user.user_metadata?.email_verified;
+
+    if (
+      !isEmailVerified &&
+      !request.nextUrl.pathname.startsWith("/verify") &&
+      !request.nextUrl.pathname.startsWith("/")
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/verify";
+      url.searchParams.set("email", user.email || "");
+      url.searchParams.set("next", request.nextUrl.pathname);
+      const response = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        response.cookies.set(cookie.name, cookie.value);
+      });
+      return response;
+    }
+  }
+
+  // if (
+  //   !user &&
+  //   !request.nextUrl.pathname.startsWith("/login") &&
+  //   !request.nextUrl.pathname.startsWith("/auth")
+  // ) {
+  //   // no user, potentially respond by redirecting the user to the login page
+  //   const url = request.nextUrl.clone();
+  //   url.pathname = "/login";
+  //   return NextResponse.redirect(url);
+  // }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:

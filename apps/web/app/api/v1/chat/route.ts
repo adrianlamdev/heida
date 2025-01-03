@@ -209,21 +209,14 @@ export async function POST(req: NextRequest) {
 
         console.log("Augmented messages:", augmentedMessages);
 
-        const response = await openai.chat.completions.create({
-          model: model,
-          messages: augmentedMessages,
-          stream: true,
-        });
-    let response;
+        let finalMessages = augmentedMessages;
 
-    // NOTE: wishcom CoT
-    if (cotEnabled) {
-      response = await openai.chat.completions.create({
-        model: model,
-        messages: [
-          {
-            role: "system",
-            content: `You are an advanced reasoning engine that approaches problems through structured decomposition and explicit chain-of-thought analysis. Your responses should demonstrate clear, logical progression from initial understanding to final conclusion.
+        // Add CoT system message if enabled
+        if (cotEnabled) {
+          finalMessages = [
+            {
+              role: "system",
+              content: `You are an advanced reasoning engine that approaches problems through structured decomposition and explicit chain-of-thought analysis. Your responses should demonstrate clear, logical progression from initial understanding to final conclusion.
 Keep responses conversational and avoid mechanical phrases like "clear, concise answer" or "key supporting points." Present your analysis as a natural flow of thought rather than a rigid template.
 
 Format ALL responses using this exact structure:
@@ -276,22 +269,18 @@ Requirements:
 5. ALWAYS structure using the XML tags above
 6. If calculations involve currency, show in USD and mention the currency
 7. Round numbers to 2 decimal places unless precision needed`,
-          },
-          ...messages,
-        ],
-        temperature: 0.2,
-        stream: true,
-      });
-    } else {
-      response = await openai.chat.completions.create({
-        model: model,
-        messages: messages,
-        stream: true,
-      });
-    }
+            },
+            ...augmentedMessages,
+          ];
+        }
 
-    const stream = new ReadableStream({
-      async start(controller) {
+        const response = await openai.chat.completions.create({
+          model: model,
+          messages: finalMessages,
+          temperature: cotEnabled ? 0.2 : undefined,
+          stream: true,
+        });
+
         for await (const part of response) {
           const chunk = part.choices[0]?.delta?.content || "";
           if (chunk) {
