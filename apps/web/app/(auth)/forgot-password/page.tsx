@@ -26,57 +26,59 @@ const formSchema = z.object({
     .string()
     .min(1, { message: "Email is required" })
     .email({ message: "Please enter a valid email address" }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters long" }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function SignUpPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
   const onSubmit = async (values: FormValues) => {
+    setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
-      const response = await fetch("/api/auth/sign-up", {
+      const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: values.email,
-          password: values.password,
         }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to sign up");
+        throw new Error(data.error || "Failed to send reset password email");
       }
-      router.push(`/verify?email=${encodeURIComponent(values.email)}`);
+
+      setSuccess("A password reset link has been sent to your email.");
     } catch (error) {
-      console.error("Sign-up error:", error);
+      console.error("Forgot password error:", error);
       if (error instanceof Error) {
         setError(error.message);
       } else {
         setError("Something went wrong. Please try again later.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen w-full flex items-center ubg-gradient-to-t from-background to-secondary/20">
+    <div className="h-screen w-full flex items-center">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -86,10 +88,10 @@ export default function SignUpPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tight">
-                Create an account
+                Forgot Password
               </h1>
               <p className="text-sm text-muted-foreground">
-                Enter your email and password to get started
+                Enter your email to reset your password
               </p>
             </div>
             <Form {...form}>
@@ -110,30 +112,7 @@ export default function SignUpPage() {
                             placeholder="name@example.com"
                             autoComplete="email"
                             type="email"
-                            disabled={form.formState.isSubmitting}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-left mt-1 text-sm text-rose-700" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <FormLabel htmlFor="password">Password</FormLabel>
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter your password"
-                            autoComplete="new-password"
-                            type="password"
-                            id="password"
-                            disabled={form.formState.isSubmitting}
+                            disabled={loading}
                             {...field}
                           />
                         </FormControl>
@@ -145,16 +124,16 @@ export default function SignUpPage() {
                 <Button
                   type="submit"
                   className="w-full group"
-                  disabled={form.formState.isSubmitting}
+                  disabled={loading}
                 >
-                  {form.formState.isSubmitting ? (
+                  {loading ? (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="flex items-center"
                     >
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating account...
+                      Sending reset link...
                     </motion.div>
                   ) : (
                     <motion.div
@@ -162,14 +141,14 @@ export default function SignUpPage() {
                       animate={{ opacity: 1 }}
                       className="flex items-center"
                     >
-                      Create account
+                      Send Reset Link
                     </motion.div>
                   )}
                 </Button>
               </form>
             </Form>
             <p className="text-sm text-muted-foreground text-center">
-              Already have an account?{" "}
+              Remember your password?{" "}
               <Link
                 href="/auth/sign-in"
                 className="font-medium underline underline-offset-4 hover:text-primary transition-colors"
@@ -180,6 +159,11 @@ export default function SignUpPage() {
             {error && (
               <Alert className="backdrop-blur bg-rose-800/20 border-rose-800/30 text-rose-700 mt-10">
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 mt-10">
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
           </div>

@@ -73,7 +73,7 @@ export default function VerifyPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/auth/confirm", {
+      const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

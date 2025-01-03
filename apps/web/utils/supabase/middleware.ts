@@ -56,7 +56,7 @@ export async function updateSession(request: NextRequest) {
 
   // Check if verify route has empty email parameter
   if (
-    request.nextUrl.pathname === "/auth/verify" &&
+    request.nextUrl.pathname === "/verify" &&
     !request.nextUrl.searchParams.get("email")
   ) {
     const url = request.nextUrl.clone();
@@ -71,9 +71,9 @@ export async function updateSession(request: NextRequest) {
   const allowedUnauthenticatedRoutes = [
     "/sign-up",
     "/sign-in",
-    "/auth/verify",
-    "/auth/confirm",
-    "/auth/resend-otp",
+    "/verify",
+    "/forgot-password",
+    "/reset-password",
   ];
 
   if (
@@ -83,7 +83,7 @@ export async function updateSession(request: NextRequest) {
     )
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/sign-in";
+    url.pathname = "/sign-in";
     const response = NextResponse.redirect(url);
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       response.cookies.set(cookie.name, cookie.value);
@@ -96,11 +96,11 @@ export async function updateSession(request: NextRequest) {
 
     if (
       !isEmailVerified &&
-      !request.nextUrl.pathname.startsWith("/auth/verify") &&
+      !request.nextUrl.pathname.startsWith("/verify") &&
       !request.nextUrl.pathname.startsWith("/")
     ) {
       const url = request.nextUrl.clone();
-      url.pathname = "/auth/verify";
+      url.pathname = "/verify";
       url.searchParams.set("email", user.email || "");
       url.searchParams.set("next", request.nextUrl.pathname);
       const response = NextResponse.redirect(url);

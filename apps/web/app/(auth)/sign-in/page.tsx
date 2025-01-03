@@ -149,17 +149,14 @@ export default function SignInPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <motion.div whileTap={{ scale: 0.995 }}>
-                              <Input
-                                id="email"
-                                placeholder="name@example.com"
-                                className="w-full bg-background/50 border-primary/20 backdrop-blur-sm transition-colors hover:bg-background/60 focus:bg-background/70"
-                                autoComplete="email"
-                                type="email"
-                                disabled={form.formState.isSubmitting}
-                                {...field}
-                              />
-                            </motion.div>
+                            <Input
+                              id="email"
+                              placeholder="name@example.com"
+                              autoComplete="email"
+                              type="email"
+                              disabled={form.formState.isSubmitting}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage className="text-left mt-1 text-sm text-rose-700" />
                         </FormItem>
@@ -175,17 +172,14 @@ export default function SignInPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <motion.div whileTap={{ scale: 0.995 }}>
-                              <Input
-                                placeholder="Enter your password"
-                                className="w-full bg-background/50 border-primary/20 backdrop-blur-sm transition-colors hover:bg-background/60 focus:bg-background/70"
-                                autoComplete="new-password"
-                                type="password"
-                                id="password"
-                                disabled={form.formState.isSubmitting}
-                                {...field}
-                              />
-                            </motion.div>
+                            <Input
+                              placeholder="Enter your password"
+                              autoComplete="new-password"
+                              type="password"
+                              id="password"
+                              disabled={form.formState.isSubmitting}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage className="text-left mt-1 text-sm text-rose-700" />
                         </FormItem>
