@@ -69,7 +69,8 @@ export async function updateSession(request: NextRequest) {
 
     if (
       !isEmailVerified &&
-      !request.nextUrl.pathname.startsWith("/auth/verify")
+      !request.nextUrl.pathname.startsWith("/auth/verify") &&
+      !request.nextUrl.pathname.startsWith("/")
     ) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/verify";
