@@ -39,7 +39,34 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  console.log(user?.user_metadata.email_verified);
+  // Check if user is trying to access auth pages while signed in
+  if (
+    user &&
+    (request.nextUrl.pathname === "/sign-in" ||
+      request.nextUrl.pathname === "/sign-up")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
+  }
+
+  // Check if verify route has empty email parameter
+  if (
+    request.nextUrl.pathname === "/auth/verify" &&
+    !request.nextUrl.searchParams.get("email")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-up";
+    const response = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value);
+    });
+    return response;
+  }
 
   const allowedUnauthenticatedRoutes = [
     "/sign-up",
