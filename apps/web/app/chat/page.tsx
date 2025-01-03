@@ -102,127 +102,127 @@ const CodeBlock = ({ code, language }: CodeBlockProps) => {
     </div>
   );
 };
-interface ThinkingStepProps {
-  id?: string;
-  confidence?: string;
-  children: React.ReactNode;
-}
-
-const ThinkingStep = ({ id, confidence, children }: ThinkingStepProps) => (
-  <div className="mb-4 p-4">
-    <div className="flex justify-between items-center mb-2">
-      <h3 className="font-semibold text-muted-foreground">Step {id}</h3>
-      <span className="text-sm text-muted-foreground">
-        Confidence: {confidence}%
-      </span>
-    </div>
-    <div className="space-y-2">{children}</div>
-  </div>
-);
-
-const ChainOfThoughtMessage = ({ content }: { content: string }) => {
-  // Parse the XML-like structure
-  const getSection = (tag: string) => {
-    const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, "s");
-    const match = content.match(regex);
-    return match ? match[1]?.trim() : "";
-  };
-
-  const getSteps = () => {
-    const stepsRegex = /<step id="(\d+)" confidence="(\d+)">(.*?)<\/step>/gs;
-    const steps = [];
-    let match;
-
-    while ((match = stepsRegex.exec(content)) !== null) {
-      steps.push({
-        id: match[1],
-        confidence: match[2],
-        content: match[3]?.trim(),
-      });
-    }
-
-    return steps;
-  };
-
-  const thinking = getSection("thinking");
-  const uncertainties = getSection("uncertainties");
-  const solution = getSection("solution");
-  const steps = getSteps();
-
-  return (
-    <div className="space-y-6">
-      {/* Thinking Section */}
-      {thinking && (
-        <div className="space-y-4">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-              <AccordionTrigger className="text-lg font-bold">
-                Reasoning Process
-              </AccordionTrigger>
-              <AccordionContent>
-                {steps.map((step) => (
-                  <ThinkingStep
-                    key={step.id}
-                    id={step.id}
-                    confidence={step.confidence}
-                  >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => (
-                          <p className="text-muted-foreground text-sm">
-                            {children}
-                          </p>
-                        ),
-                        ul: ({ children }) => (
-                          <ul className="list-disc pl-6 space-y-1 text-sm text-muted-foreground">
-                            {children}
-                          </ul>
-                        ),
-                      }}
-                    >
-                      {step.content}
-                    </ReactMarkdown>
-                  </ThinkingStep>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      )}
-
-      {/* Uncertainties Section */}
-      {uncertainties && (
-        <div className="p-4 bg-muted/20 rounded-lg">
-          <h2 className="text-lg font-bold mb-3">Uncertainties & Risks</h2>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            className="text-sm text-muted-foreground"
-          >
-            {uncertainties}
-          </ReactMarkdown>
-        </div>
-      )}
-
-      {/* Solution Section */}
-      {solution && (
-        <div className="p-4 bg-primary/10 rounded-lg">
-          <h2 className="text-lg font-bold mb-3">Solution</h2>
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              p: ({ children }) => (
-                <p className="text-sm font-medium">{children}</p>
-              ),
-            }}
-          >
-            {solution}
-          </ReactMarkdown>
-        </div>
-      )}
-    </div>
-  );
-};
+// interface ThinkingStepProps {
+//   id?: string;
+//   confidence?: string;
+//   children: React.ReactNode;
+// }
+//
+// const ThinkingStep = ({ id, confidence, children }: ThinkingStepProps) => (
+//   <div className="mb-4 p-4">
+//     <div className="flex justify-between items-center mb-2">
+//       <h3 className="font-semibold text-muted-foreground">Step {id}</h3>
+//       <span className="text-sm text-muted-foreground">
+//         Confidence: {confidence}%
+//       </span>
+//     </div>
+//     <div className="space-y-2">{children}</div>
+//   </div>
+// );
+//
+// const ChainOfThoughtMessage = ({ content }: { content: string }) => {
+//   // Parse the XML-like structure
+//   const getSection = (tag: string) => {
+//     const regex = new RegExp(`<${tag}>(.*?)</${tag}>`, "s");
+//     const match = content.match(regex);
+//     return match ? match[1]?.trim() : "";
+//   };
+//
+//   const getSteps = () => {
+//     const stepsRegex = /<step id="(\d+)" confidence="(\d+)">(.*?)<\/step>/gs;
+//     const steps = [];
+//     let match;
+//
+//     while ((match = stepsRegex.exec(content)) !== null) {
+//       steps.push({
+//         id: match[1],
+//         confidence: match[2],
+//         content: match[3]?.trim(),
+//       });
+//     }
+//
+//     return steps;
+//   };
+//
+//   const thinking = getSection("thinking");
+//   const uncertainties = getSection("uncertainties");
+//   const solution = getSection("solution");
+//   const steps = getSteps();
+//
+//   return (
+//     <div className="space-y-6">
+//       {/* Thinking Section */}
+//       {thinking && (
+//         <div className="space-y-4">
+//           <Accordion type="single" collapsible className="w-full">
+//             <AccordionItem value="item-1">
+//               <AccordionTrigger className="text-lg font-bold">
+//                 Reasoning Process
+//               </AccordionTrigger>
+//               <AccordionContent>
+//                 {steps.map((step) => (
+//                   <ThinkingStep
+//                     key={step.id}
+//                     id={step.id}
+//                     confidence={step.confidence}
+//                   >
+//                     <ReactMarkdown
+//                       remarkPlugins={[remarkGfm]}
+//                       components={{
+//                         p: ({ children }) => (
+//                           <p className="text-muted-foreground text-sm">
+//                             {children}
+//                           </p>
+//                         ),
+//                         ul: ({ children }) => (
+//                           <ul className="list-disc pl-6 space-y-1 text-sm text-muted-foreground">
+//                             {children}
+//                           </ul>
+//                         ),
+//                       }}
+//                     >
+//                       {step.content}
+//                     </ReactMarkdown>
+//                   </ThinkingStep>
+//                 ))}
+//               </AccordionContent>
+//             </AccordionItem>
+//           </Accordion>
+//         </div>
+//       )}
+//
+//       {/* Uncertainties Section */}
+//       {uncertainties && (
+//         <div className="p-4 bg-muted/20 rounded-lg">
+//           <h2 className="text-lg font-bold mb-3">Uncertainties & Risks</h2>
+//           <ReactMarkdown
+//             remarkPlugins={[remarkGfm]}
+//             className="text-sm text-muted-foreground"
+//           >
+//             {uncertainties}
+//           </ReactMarkdown>
+//         </div>
+//       )}
+//
+//       {/* Solution Section */}
+//       {solution && (
+//         <div className="p-4 bg-primary/10 rounded-lg">
+//           <h2 className="text-lg font-bold mb-3">Solution</h2>
+//           <ReactMarkdown
+//             remarkPlugins={[remarkGfm]}
+//             components={{
+//               p: ({ children }) => (
+//                 <p className="text-sm font-medium">{children}</p>
+//               ),
+//             }}
+//           >
+//             {solution}
+//           </ReactMarkdown>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
 
 const STATUS_MESSAGES: { [key: string]: string } = {
   // Search phase
@@ -256,9 +256,9 @@ const StatusMessage = ({ status, visible }: StatusMessageProps) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute flex items-center justify-center z-50 pointer-events-none -top-14"
+          className="absolute flex items-center justify-center z-50 pointer-events-none -top-12 left-1/3"
         >
-          <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-secondary/70 border backdrop-blur-sm shadow-inner">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-secondary/70 border backdrop-blur-sm shadow-inner text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm font-medium">{message}</span>
           </div>
@@ -270,10 +270,10 @@ const StatusMessage = ({ status, visible }: StatusMessageProps) => {
 
 // FIXME: currently can't render special properties like \, and [; works for $ and $$
 const MessageContent = ({ content }: { content: string }) => {
-  const hasChainOfThought =
-    content.includes("<thinking>") &&
-    content.includes("</thinking>") &&
-    content.includes("<solution>");
+  // const hasChainOfThought =
+  //   content.includes("<thinking>") &&
+  //   content.includes("</thinking>") &&
+  //   content.includes("<solution>");
 
   return (
     <motion.div
@@ -282,10 +282,10 @@ const MessageContent = ({ content }: { content: string }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {hasChainOfThought ? (
-        <ChainOfThoughtMessage content={content} />
-      ) : (
-         <ReactMarkdown
+      {/* {hasChainOfThought ? ( */}
+      {/*   <ChainOfThoughtMessage content={content} /> */}
+      {/* ) : ( */}
+      <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[
           [
@@ -298,50 +298,34 @@ const MessageContent = ({ content }: { content: string }) => {
           ],
         ]}
         components={{
-          p: ({ children, ...props }) => (
-            <p className="mb-4 last:mb-0" {...props}>
-              {children}
-            </p>
-          ),
-          a: ({ children, ...props }) => (
+          p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+          a: ({ children, href }) => (
             <a
+              href={href}
               className="font-medium underline underline-offset-1 text-muted-foreground hover:text-primary"
-              {...props}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {children}
             </a>
           ),
-          ul: ({ children, ...props }) => (
-            <ul className="list-disc pl-6 mb-4 space-y-2" {...props}>
-              {children}
-            </ul>
+          ul: ({ children }) => (
+            <ul className="list-disc pl-6 mb-4 space-y-2">{children}</ul>
           ),
-          ol: ({ children, ...props }) => (
-            <ol className="list-decimal pl-6 mb-4 space-y-2" {...props}>
-              {children}
-            </ol>
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-6 mb-4 space-y-2">{children}</ol>
           ),
-          li: ({ children, ...props }) => (
-            <li className="mb-1" {...props}>
-              {children}
-            </li>
+          li: ({ children }) => <li className="mb-1">{children}</li>,
+          h1: ({ children }) => (
+            <h1 className="text-2xl font-bold mb-4 mt-6">{children}</h1>
           ),
-          h1: ({ children, ...props }) => (
-            <h1 className="text-2xl font-bold mb-4 mt-6" {...props}>
-              {children}
-            </h1>
+          h2: ({ children }) => (
+            <h2 className="text-xl font-bold mb-3 mt-5">{children}</h2>
           ),
-          h2: ({ children, ...props }) => (
-            <h2 className="text-xl font-bold mb-3 mt-5" {...props}>
-              {children}
-            </h2>
+          h3: ({ children }) => (
+            <h3 className="text-lg font-bold mb-2 mt-4">{children}</h3>
           ),
-          h3: ({ children, ...props }) => (
-            <h3 className="text-lg font-bold mb-2 mt-4" {...props}>
-              {children}
-            </h3>
-          ),
-          code: ({ className, children, ...props }) => {
+          code: ({ className, children }) => {
             const match = /language-(\w+)/.exec(className || "");
             const isMath =
               className?.includes("math-inline") ||
@@ -349,7 +333,11 @@ const MessageContent = ({ content }: { content: string }) => {
               className?.includes("language-math");
 
             if (isMath) {
-              return <span className="katex-wrapper">{children}</span>;
+              return (
+                <span className="katex-wrapper">
+                  {String(children).replace(/\n$/, "")}
+                </span>
+              );
             }
 
             return match ? (
@@ -358,53 +346,37 @@ const MessageContent = ({ content }: { content: string }) => {
                 language={match[1] || "text"}
               />
             ) : (
-              <code
-                className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50"
-                {...props}
-              >
+              <code className="px-1.5 py-0.5 rounded font-mono text-sm bg-muted/50">
                 {children}
               </code>
             );
           },
-          blockquote: ({ children, ...props }) => (
-            <blockquote
-              className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground"
-              {...props}
-            >
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-muted pl-4 my-4 italic text-muted-foreground">
               {children}
             </blockquote>
           ),
-          table: ({ children, ...props }) => (
+          table: ({ children }) => (
             <div className="overflow-x-auto my-4">
-              <table className="min-w-full divide-y divide-border" {...props}>
+              <table className="min-w-full divide-y divide-border">
                 {children}
               </table>
             </div>
           ),
-          th: ({ children, ...props }) => (
-            <th
-              className="px-4 py-2 font-normal text-left text-muted-foreground tracking-tight hover:bg-accent transition-colors"
-              {...props}
-            >
+          th: ({ children }) => (
+            <th className="px-4 py-2 bg-muted font-semibold text-left">
               {children}
             </th>
           ),
-          td: ({ children, ...props }) => (
-            <td
-              className="px-4 py-2 border-t border-border hover:bg-accent transition-colors"
-              {...props}
-            >
-              {children}
-            </td>
+          td: ({ children }) => (
+            <td className="px-4 py-2 border-t border-border">{children}</td>
           ),
-          hr: ({ ...props }) => (
-            <hr className="my-6 border-border" {...props} />
-          ),
+          hr: () => <hr className="my-6 border-border" />,
         }}
       >
         {content}
       </ReactMarkdown>
-      )}
+      {/* )} */}
     </motion.div>
   );
 };
@@ -648,102 +620,109 @@ export default function ChatPage() {
         onSubmit={handleSubmit}
         className="fixed bottom-4 md:bottom-6 left-0 right-0 max-w-3xl mx-auto px-4 z-10 rounded-full mb-4"
       >
-        <div className="max-w-3xl mx-auto flex gap-2 w-full">
-          <div className="flex-1 flex justify-center items-center bg-secondary/80 transition-colors focus-within:bg-secondary rounded-full w-full p-1 pl-2 relative border shadow-lg gap-2">
-            <StatusMessage status={status} visible={showStatus} />
-            <div className="flex flex-col">
-              <div className="flex items-center">
-                {/* <Button */}
-                {/*   size="icon" */}
-                {/*   variant="ghost" */}
-                {/*   className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent" */}
-                {/* > */}
-                {/*   <MoreVertical className="h-5 w-5" /> */}
-                {/* </Button> */}
+        <div className="max-w-3xl w-full">
+          <div className="flex-1 flex justify-between items-center bg-secondary/80 transition-colors focus-within:bg-secondary rounded-full w-full p-1 pl-2 relative border shadow-lg">
+            <div className="flex items-center gap-2 w-full flex-1">
+              <StatusMessage status={status} visible={showStatus} />
+              <div className="flex flex-col">
+                <div className="flex items-center w-full">
+                  {/* <Button */}
+                  {/*   size="icon" */}
+                  {/*   variant="ghost" */}
+                  {/*   className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent" */}
+                  {/* > */}
+                  {/*   <MoreVertical className="h-5 w-5" /> */}
+                  {/* </Button> */}
 
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  multiple
-                />
+                  <Input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    multiple
+                  />
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handlePaperclipClick}
-                  className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePaperclipClick}
+                    className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent"
+                  >
+                    <Paperclip className="h-5 w-5" />
+                  </Button>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  className={`h-8 px-2 py-1 rounded-full flex items-center gap-2 hover:bg-transparent ${
-                    webSearchEnabled
-                      ? "bg-background hover:bg-background/50"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  <Search className={`h-5 w-5 ${webSearchEnabled ? "" : ""}`} />
-                  <span>Web Search</span>
-                  {webSearchEnabled && <X className="h-4 w-4" />}
-                </Button>
-              </div>
-
-              {attachedFiles.length > 0 && (
-                <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg">
-                  <div className="flex flex-col gap-2">
-                    {attachedFiles.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50"
-                      >
-                        <div className="flex items-center gap-2">
-                          <File className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm truncate max-w-[200px]">
-                            {file.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            ({(file.size / 1024).toFixed(1)} KB)
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          type="button"
-                          className="text-muted-foreground hover:bg-transparent"
-                          onClick={() => handleFileRemove(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    className={`h-8 px-2 py-1 rounded-full flex items-center gap-2 hover:bg-transparent 
+${
+  webSearchEnabled
+    ? "bg-background/50 hover:bg-background/60"
+    : "text-muted-foreground"
+}`}
+                  >
+                    <Search
+                      className={`h-5 w-5 ${webSearchEnabled ? "" : ""}`}
+                    />
+                    <span>Web Search</span>
+                    {webSearchEnabled && <X className="h-4 w-4" />}
+                  </Button>
                 </div>
-              )}
+
+                {attachedFiles.length > 0 && (
+                  <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg">
+                    <div className="flex flex-col gap-2">
+                      {attachedFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <File className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm truncate max-w-[200px]">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            type="button"
+                            className="text-muted-foreground hover:bg-transparent"
+                            onClick={() => handleFileRemove(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder={
+                    attachedFiles.length > 0
+                      ? "Add a message..."
+                      : "Type a message..."
+                  }
+                  className="w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
+                />
+              </div>
             </div>
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              placeholder={
-                attachedFiles.length > 0
-                  ? "Add a message..."
-                  : "Type a message..."
-              }
-              className="w-full border-none bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
-            />
             <AnimatePresence mode="wait">
               <motion.div
                 key={isLoading ? "loading" : "idle"}
@@ -751,11 +730,12 @@ export default function ChatPage() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
                 transition={{ duration: 0.3 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <Button
                   type="button"
                   size="icon"
-                  className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center"
+                  className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
                     !isLoading && !input.trim() && attachedFiles.length === 0
                   }
