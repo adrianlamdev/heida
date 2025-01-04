@@ -61,7 +61,7 @@ const CodeBlock = ({ code, language }: CodeBlockProps) => {
   };
 
   return (
-    <div className="relative my-4 bg-muted/20 rounded-lg border shadow-sm">
+    <div className="relative my-4 bg-muted/20 rounded-lg border">
       <div className="flex justify-between items-center pl-4 py-1 pr-1 border-b bg-muted/20 rounded-t-lg">
         <span className="text-xs font-mono text-muted-foreground">
           {language}
@@ -385,7 +385,6 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [openRouterApiKey, setOpenRouterApiKey] = useState<string | null>(null);
   const [model, setModel] = useState<string>("openai/gpt-3.5-turbo");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -421,21 +420,6 @@ export default function ChatPage() {
     setFileAttachmentReset((prev) => !prev);
   };
 
-  // FIX: not safe to use localStorage to store API key
-  // - encrypt and save or
-  // - use a server to store and retrieve
-  useEffect(() => {
-    const storedApiKey = localStorage.getItem("open_router_api_key");
-    const storedModel = localStorage.getItem("openrouter_model_name");
-    if (storedApiKey) {
-      setOpenRouterApiKey(storedApiKey);
-      setShowDialog(false);
-    }
-    if (storedModel) {
-      setModel(storedModel);
-    }
-  }, []);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -469,7 +453,6 @@ export default function ChatPage() {
 
       const formData = new FormData();
       formData.append("messages", JSON.stringify([...messages, userMessage]));
-      formData.append("apiKey", openRouterApiKey || "");
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
       attachedFiles.forEach((file, index) => {
@@ -544,44 +527,8 @@ export default function ChatPage() {
     }
   };
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const apiKey = event.target.value;
-    setOpenRouterApiKey(apiKey);
-    localStorage.setItem("open_router_api_key", apiKey);
-    if (apiKey.trim()) {
-      setShowDialog(false);
-    }
-  };
-
   return (
     <main className="flex flex-col h-full relative items-center justify-center">
-      {showDialog && (
-        <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
-          <AlertDialogContent className="max-w-md">
-            <AlertDialogHeader className="mb-4">
-              <AlertDialogTitle className="text-xl">
-                OpenRouter API Key Required
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Please provide your OpenRouter API key to continue.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="mb-4">
-              <Input
-                value={openRouterApiKey || ""}
-                placeholder="sk-or-..."
-                onChange={handleInputChange}
-              />
-            </div>
-            <AlertDialogFooter className="flex justify-end">
-              <AlertDialogAction disabled={!openRouterApiKey}>
-                Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
       <div className="flex-1 overflow-y-auto w-full">
         <div className="h-full flex flex-col">
           <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-28 md:pb-36">
@@ -719,7 +666,7 @@ ${
                       ? "Add a message..."
                       : "Type a message..."
                   }
-                  className="w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
+                  className="shadow-none w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
                 />
               </div>
             </div>
