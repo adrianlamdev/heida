@@ -16,12 +16,9 @@ import {
   Keyboard,
   Moon,
   MoreVertical,
+  Check,
 } from "lucide-react";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@workspace/ui/components/avatar";
+import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,17 +42,36 @@ import {
   SheetTrigger,
   SheetFooter,
 } from "@workspace/ui/components/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function ChatNav() {
   const supabase = createClient();
-
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [openrouterModelName, setOpenrouterModelName] = useState<string>(
     "deepseek/deepseek-chat",
   );
+  const [showAPIDialog, setShowAPIDialog] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("openai");
+  const [apiKeys, setApiKeys] = useState({
+    openai: "",
+    claude: "",
+    openrouter: "",
+  });
 
   // TODO: fetch recents from db
   const recentChats = [
@@ -63,6 +79,27 @@ export default function ChatNav() {
     { id: 2, title: "Project Discussion" },
     { id: 3, title: "Team Meeting" },
     { id: 4, title: "Product Feedback" },
+  ];
+
+  const providers = [
+    {
+      id: "openai",
+      name: "OpenAI",
+      description: "Access OpenAI models",
+      placeholder: "sk-...",
+    },
+    {
+      id: "claude",
+      name: "Anthropic Claude",
+      description: "Access Claude models",
+      placeholder: "sk-ant-...",
+    },
+    {
+      id: "openrouter",
+      name: "OpenRouter",
+      description: "Access multiple AI models",
+      placeholder: "sk-or-...",
+    },
   ];
 
   useEffect(() => {
@@ -97,6 +134,14 @@ export default function ChatNav() {
     if (storedModelName) {
       setOpenrouterModelName(storedModelName);
     }
+
+    // Load saved API keys
+    const savedKeys = {
+      openai: localStorage.getItem("openai_api_key") || "",
+      claude: localStorage.getItem("claude_api_key") || "",
+      openrouter: localStorage.getItem("openrouter_api_key") || "",
+    };
+    setApiKeys(savedKeys);
   }, []);
 
   useEffect(() => {
@@ -109,6 +154,14 @@ export default function ChatNav() {
     } catch (error) {
       console.error("Error signing out:", error);
     }
+  };
+
+  const handleAPIKeyChange = (provider: string, value: string) => {
+    setApiKeys((prev) => ({
+      ...prev,
+      [provider]: value,
+    }));
+    localStorage.setItem(`${provider}_api_key`, value);
   };
 
   if (loading) {
@@ -149,6 +202,15 @@ export default function ChatNav() {
                     </Button>
                   ))}
                 </div>
+
+                <Button
+                  variant="ghost"
+                  className="flex items-center w-full gap-2 justify-start mt-6"
+                  onClick={() => setShowAPIDialog(true)}
+                >
+                  <Key className="h-4 w-4" />
+                  <span>API Keys</span>
+                </Button>
               </div>
 
               <SheetFooter>
@@ -161,12 +223,6 @@ export default function ChatNav() {
                       >
                         <div className="flex justify-start items-center gap-2">
                           <Avatar className="h-10 w-10">
-                            {/* <AvatarImage */}
-                            {/*   src={ */}
-                            {/*     user.user_metadata.avatar_url || "/avatars/user.png" */}
-                            {/*   } */}
-                            {/*   alt="User avatar" */}
-                            {/* /> */}
                             <AvatarFallback className="bg-secondary">
                               {user.email[0]}
                             </AvatarFallback>
@@ -207,7 +263,7 @@ export default function ChatNav() {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuGroup>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowAPIDialog(true)}>
                         <Key className="mr-2 h-4 w-4" />
                         <span>API Keys</span>
                       </DropdownMenuItem>
@@ -269,6 +325,66 @@ export default function ChatNav() {
               </SheetFooter>
             </SheetContent>
           </Sheet>
+
+          <Dialog open={showAPIDialog} onOpenChange={setShowAPIDialog}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>API Key Management</DialogTitle>
+                <DialogDescription>
+                  Configure your API keys for different providers
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="space-y-4 md:border-r md:pr-4">
+                  {providers.map((provider) => (
+                    <Button
+                      key={provider.id}
+                      variant={
+                        selectedProvider === provider.id ? "outline" : "ghost"
+                      }
+                      className="w-full justify-between h-auto"
+                      onClick={() => setSelectedProvider(provider.id)}
+                    >
+                      <div className="text-left">
+                        <div className="font-medium">{provider.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {provider.description}
+                        </div>
+                      </div>
+                      {selectedProvider === provider.id && <Check />}
+                    </Button>
+                  ))}
+                </div>
+
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle>
+                      {providers.find((p) => p.id === selectedProvider)?.name}
+                    </CardTitle>
+                    <CardDescription>
+                      Enter your API key for{" "}
+                      {providers.find((p) => p.id === selectedProvider)?.name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Input
+                      type="password"
+                      placeholder={
+                        providers.find((p) => p.id === selectedProvider)
+                          ?.placeholder
+                      }
+                      value={apiKeys[selectedProvider as keyof typeof apiKeys]}
+                      onChange={(e) =>
+                        handleAPIKeyChange(selectedProvider, e.target.value)
+                      }
+                      className="w-full"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Input
             value={openrouterModelName}
