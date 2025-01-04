@@ -192,17 +192,28 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Model name is required", { status: 400 });
     }
 
-    for (const message of messages) {
-      const { error: messageError } = await supabase.from("messages").insert([
-        {
-          chat_id: currentChatId,
-          role: message.role,
-          content: message.content,
-          metadata: message.metadata || {},
-        },
-      ]);
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== "user") {
+      return NextResponse.json(
+        { error: "Invalid message format" },
+        { status: 400 },
+      );
+    }
 
-      if (messageError) throw messageError;
+    // Save only the new user message
+    const { error: userMessageError } = await supabase.from("messages").insert([
+      {
+        chat_id: currentChatId,
+        role: lastMessage.role,
+        content: lastMessage.content,
+        created_at: new Date().toISOString(),
+        metadata: lastMessage.metadata || {},
+      },
+    ]);
+
+    if (userMessageError) {
+      console.error("Error saving user message:", userMessageError);
+      throw userMessageError;
     }
 
     const stream = new ReadableStream({
