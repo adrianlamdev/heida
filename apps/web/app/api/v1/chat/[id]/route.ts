@@ -70,16 +70,14 @@ async function shouldPerformWebSearch(
   }
 }
 
-const chatParamsSchema = z.object({
-  id: z.string(),
-});
+const chatParamsSchema = z.string();
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
-    const { id } = chatParamsSchema.parse({ id: params.id });
+    const id = chatParamsSchema.parse(params.id);
     const supabase = await createClient();
 
     const {
@@ -109,7 +107,7 @@ export async function GET(
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
       .select("*")
-      .eq("chat_id", params.id)
+      .eq("chat_id", id)
       .order("created_at", { ascending: true });
 
     if (messagesError) {
@@ -131,10 +129,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } },
+  { params }: { params: { id: string } },
 ) {
   try {
-    const { params } = chatParamsSchema.parse({ params: context.params });
+    const id = chatParamsSchema.parse(params.id);
     const formData = await req.formData();
     const supabase = await createClient();
 
@@ -151,7 +149,7 @@ export async function POST(
       .from("user_chats")
       .select()
       .eq("user_id", user.id)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (chatError || !chatData) {
@@ -184,6 +182,28 @@ export async function POST(
           process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       },
     });
+
+    const incomingMessages =
+      JSON.parse(formData.get("messages") as string) || [];
+    const lastMessage = incomingMessages[incomingMessages.length - 1];
+
+    if (!lastMessage || lastMessage.role !== "user") {
+      return NextResponse.json(
+        { error: "Invalid message format" },
+        { status: 400 },
+      );
+    }
+
+    const { data: existingMessages } = await supabase
+      .from("messages")
+      .select("content, role, created_at")
+      .eq("chat_id", id)
+      .order("created_at", { ascending: true });
+
+    // Create a clean message history combining existing and new messages
+    const messagesToSend = existingMessages
+      ? [...existingMessages, lastMessage]
+      : [lastMessage];
 
     const messages = JSON.parse(formData.get("messages") as string) || [];
     const model = (formData.get("model") as string) || "deepseek/deepseek-chat";
@@ -313,7 +333,7 @@ Format ALL responses using this exact structure:
             .from("messages")
             .insert([
               {
-                chat_id: params.id,
+                chat_id: id,
                 role: "assistant",
                 content: assistantMessage,
                 metadata: {
