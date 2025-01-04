@@ -211,6 +211,7 @@ export default function ChatNav() {
             provider: "github",
             options: {
               redirectTo: `${window.location.origin}/api/auth/callback?next=/chat`,
+              scopes: "repo read:user",
             },
           });
 
@@ -698,10 +699,10 @@ export default function ChatNav() {
                       </div>
                       <div className="flex items-center gap-2">
                         {oAuthLoading === integration.id ? (
-                          <>
+                          <div className="flex items-center gap-2 px-4 py-2 text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span>Connecting...</span>
-                          </>
+                          </div>
                         ) : connectedIntegrations.includes(integration.id) ? (
                           <div className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 flex items-center gap-2 rounded-md px-4 py-2">
                             <Check className="h-4 w-4" />
