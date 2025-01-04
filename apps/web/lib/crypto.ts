@@ -70,5 +70,3 @@ export function decryptText(encryptedData: string, iv: string): string {
 export function generateEncryptionKey(): string {
   return randomBytes(32).toString("hex");
 }
-
-console.log(generateEncryptionKey());
