@@ -555,26 +555,26 @@ export default function ChatNav() {
                         </Button>
                       )}
                     </div>
-
-                    <p className="text-center text-xs text-muted-foreground mt-6">
-                      Your API keys are encrypted with AES-256 encryption and
-                      stored securely to maintain confidentiality and integrity.
-                    </p>
                   </CardContent>
                 </Card>
               </div>
+
+              <p className="text-xs text-muted-foreground mt-2 w-full text-center">
+                Your API keys are encrypted with AES-256 encryption and stored
+                securely to maintain confidentiality and integrity.
+              </p>
             </DialogContent>
           </Dialog>
 
           <Dialog
             open={showChatSettingsDialog}
-            onOpenChange={showChatSettingsDialog}
+            onOpenChange={setShowChatSettingsDialog}
           >
             <DialogContent className="max-w-3xl">
               <DialogHeader>
-                <DialogTitle>Chat History</DialogTitle>
+                <DialogTitle>Chat Settings</DialogTitle>
                 <DialogDescription>
-                  Configure your API keys for different providers
+                  Manage your chat settings and preferences
                 </DialogDescription>
               </DialogHeader>
 
@@ -600,15 +600,6 @@ export default function ChatNav() {
                       </div>
                       <div className="flex gap-4 items-center">
                         {selectedProvider === provider.id && <Check />}
-                        <Link href={provider.href} target="_blank">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </Link>
                       </div>
                     </Button>
                   ))}

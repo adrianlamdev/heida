@@ -76,10 +76,11 @@ const chatParamsSchema = z.object({
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
   try {
-    const { id } = chatParamsSchema.parse({ id: params.id });
+    const id = chatParamsSchema.parse(params.id);
     const supabase = await createClient();
 
     const {
@@ -131,10 +132,11 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
   try {
-    const { params } = chatParamsSchema.parse({ params: context.params });
+    const id = chatParamsSchema.parse(params.id);
     const formData = await req.formData();
     const supabase = await createClient();
 
@@ -151,7 +153,7 @@ export async function POST(
       .from("user_chats")
       .select()
       .eq("user_id", user.id)
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (chatError || !chatData) {
@@ -313,7 +315,7 @@ Format ALL responses using this exact structure:
             .from("messages")
             .insert([
               {
-                chat_id: params.id,
+                chat_id: id,
                 role: "assistant",
                 content: assistantMessage,
                 metadata: {
