@@ -18,6 +18,14 @@ import {
   MoreVertical,
   Check,
   ExternalLink,
+  Speech,
+  MessageCircle,
+  Box,
+  Sparkle,
+  Sparkles,
+  PlugZap,
+  Rocket,
+  Settings,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import {
@@ -66,6 +74,7 @@ export default function ChatNav() {
     "deepseek/deepseek-chat",
   );
   const [showAPIDialog, setShowAPIDialog] = useState(false);
+  const [showChatSettingsDialog, setShowChatSettingsDialog] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("openai");
   const [apiKeys, setApiKeys] = useState({
     openai: false,
@@ -341,11 +350,9 @@ export default function ChatNav() {
 
                   <DropdownMenuContent className="w-64" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {user.email}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium leading-none">
+                        Account & Settings
+                      </p>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
 
@@ -355,6 +362,11 @@ export default function ChatNav() {
                         <span>Profile</span>
                         <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
                       </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Account settings</span>
+                        <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+                      </DropdownMenuItem>
                     </DropdownMenuGroup>
 
                     <DropdownMenuSeparator />
@@ -362,28 +374,27 @@ export default function ChatNav() {
                     <DropdownMenuGroup>
                       <DropdownMenuItem onClick={() => setShowAPIDialog(true)}>
                         <Key className="mr-2 h-4 w-4" />
-                        <span>API Keys</span>
+                        <span>API keys</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSub>
-                        <DropdownMenuSubContent className="w-48">
-                          <DropdownMenuItem>
-                            <Sun className="mr-2 h-4 w-4" />
-                            <span>Light</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Moon className="mr-2 h-4 w-4" />
-                            <span>Dark</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Globe className="mr-2 h-4 w-4" />
-                            <span>System</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuSubContent>
-                      </DropdownMenuSub>
-                      <DropdownMenuItem>
-                        <Keyboard className="mr-2 h-4 w-4" />
-                        <span>Keyboard shortcuts</span>
-                        <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
+                      <DropdownMenuItem onClick={() => setShowAPIDialog(true)}>
+                        <PlugZap className="mr-2 h-4 w-4" />
+                        <span>Integrations</span>
+                      </DropdownMenuItem>
+                      {/* <DropdownMenuItem> */}
+                      {/*   <Keyboard className="mr-2 h-4 w-4" /> */}
+                      {/*   <span>Keyboard shortcuts</span> */}
+                      {/*   <DropdownMenuShortcut>⌘K</DropdownMenuShortcut> */}
+                      {/* </DropdownMenuItem> */}
+                    </DropdownMenuGroup>
+
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={() => setShowChatSettingsDialog(true)}
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        <span>Chat settings</span>
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
 
@@ -393,19 +404,23 @@ export default function ChatNav() {
                       <DropdownMenuItem asChild>
                         <Link href="/support">
                           <HelpCircle className="mr-2 h-4 w-4" />
-                          <span>Help & Support</span>
+                          <span>Help & support</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link href="/privacy-policy">
+                        <Link href="/feedback">
                           <Lock className="mr-2 h-4 w-4" />
-                          <span>Privacy Policy</span>
+                          <span>Report an issue</span>
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
 
                     <DropdownMenuSeparator />
 
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <Rocket className="mr-2 h-4 w-4" />
+                      <span>Release notes</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-red-700 focus:text-red-700"
                       onClick={handleSignOut}
@@ -423,6 +438,102 @@ export default function ChatNav() {
             <DialogContent className="max-w-3xl">
               <DialogHeader>
                 <DialogTitle>API Key Management</DialogTitle>
+                <DialogDescription>
+                  Configure your API keys for different providers
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="space-y-4 md:border-r md:pr-4">
+                  {providers.map((provider) => (
+                    <Button
+                      key={provider.id}
+                      variant={
+                        selectedProvider === provider.id ? "outline" : "ghost"
+                      }
+                      className="w-full justify-between h-16 px-6"
+                      onClick={() => setSelectedProvider(provider.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div>{provider.icon}</div>
+                        <div className="flex flex-col text-left">
+                          <div className="font-medium">{provider.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {provider.description}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 items-center">
+                        {selectedProvider === provider.id && <Check />}
+                        <Link href={provider.href} target="_blank">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle>
+                      {providers.find((p) => p.id === selectedProvider)?.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {apiKeys[selectedProvider as keyof typeof apiKeys]
+                        ? "API key is saved and encrypted"
+                        : "Enter your API key for " +
+                          providers.find((p) => p.id === selectedProvider)
+                            ?.name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <Input
+                        type="password"
+                        placeholder={
+                          providers.find((p) => p.id === selectedProvider)
+                            ?.placeholder
+                        }
+                        value={keyInput}
+                        onChange={(e) =>
+                          handleAPIKeyChange(selectedProvider, e.target.value)
+                        }
+                        className="w-full"
+                      />
+                      {apiKeys[selectedProvider as keyof typeof apiKeys] && (
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => deleteAPIKey(selectedProvider)}
+                        >
+                          Remove API Key
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-center text-xs text-muted-foreground mt-6">
+                      Your API keys are encrypted with AES-256 encryption and
+                      stored securely to maintain confidentiality and integrity.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={showChatSettingsDialog}
+            onOpenChange={showChatSettingsDialog}
+          >
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Chat History</DialogTitle>
                 <DialogDescription>
                   Configure your API keys for different providers
                 </DialogDescription>
