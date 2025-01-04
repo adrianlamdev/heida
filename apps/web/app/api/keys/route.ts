@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { keySchema } from "@/schemas/key";
-import { encryptText, decryptText } from "@/lib/crypto";
+import { encryptText } from "@/lib/crypto";
 
 const keyValidation = {
   openai: (key: string) => key.startsWith("sk-") && key.length >= 40,

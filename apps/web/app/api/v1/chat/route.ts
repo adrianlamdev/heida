@@ -1,8 +1,10 @@
 import { OpenAI } from "openai";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+import { decryptText } from "@/lib/crypto";
 
-export const runtime = "edge";
+// export const runtime = "edge";
 
 const RAG_API_URL = process.env.RAG_API_URL || "http://localhost:8000";
 
@@ -77,7 +79,6 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
 
     const messages = JSON.parse(formData.get("messages") as string) || [];
-    const apiKey = (formData.get("apiKey") as string) || "";
     const model = (formData.get("model") as string) || "";
     const cotEnabled = (formData.get("cotEnabled") as string) === "true";
     const webSearchEnabled =
@@ -95,15 +96,39 @@ export async function POST(req: NextRequest) {
     if (!messages || !Array.isArray(messages)) {
       return new NextResponse("Messages are required", { status: 400 });
     }
-    if (!apiKey) {
-      return new NextResponse("API key is required", { status: 400 });
-    }
     if (!model) {
       return new NextResponse("Model name is required", { status: 400 });
     }
 
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data, error } = await supabase
+      .from("api_keys")
+      .select("encrypted_api_key, provider")
+      .eq("user_id", user.id)
+      .eq("provider", "openrouter")
+      .single();
+
+    if (error) throw error;
+
+    const apiKey = data.encrypted_api_key;
+    if (!apiKey) {
+      return new NextResponse("API key not found", { status: 401 });
+    }
+
+    const [encryptedData, iv] = data.encrypted_api_key.split(":");
+    const decryptedKey = decryptText(encryptedData, iv);
+
     const openai = new OpenAI({
-      apiKey: apiKey,
+      apiKey: decryptedKey,
       baseURL: "https://openrouter.ai/api/v1",
       defaultHeaders: {
         "HTTP-Referer":

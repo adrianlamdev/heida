@@ -21,13 +21,6 @@ export function createRateLimiter(options: RateLimitOptions) {
   });
 }
 
-// const authLimiter = new Ratelimit({
-//   redis,
-//   limiter: Ratelimit.slidingWindow(5, "15 m"),
-//   analytics: true,
-//   prefix: "@upstash/ratelimit",
-// });
-
 export async function rateLimit(
   req: NextRequest,
   identifier: string,
@@ -37,6 +30,11 @@ export async function rateLimit(
     req.headers.get("x-forwarded-for")?.split(",")[0] ||
     req.headers.get("x-real-ip") ||
     "anonymous";
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`Rate limiting ${identifier}:${ip}`);
+    return null;
+  }
 
   const { success, reset, limit, remaining } = await rateLimiter.limit(
     `${identifier}:${ip}`,

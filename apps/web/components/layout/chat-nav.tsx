@@ -17,6 +17,7 @@ import {
   Moon,
   MoreVertical,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import {
@@ -29,7 +30,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Button } from "@workspace/ui/components/button";
@@ -68,10 +68,11 @@ export default function ChatNav() {
   const [showAPIDialog, setShowAPIDialog] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("openai");
   const [apiKeys, setApiKeys] = useState({
-    openai: "",
-    claude: "",
-    openrouter: "",
+    openai: false,
+    claude: false,
+    openrouter: false,
   });
+  const [keyInput, setKeyInput] = useState("");
 
   // TODO: fetch recents from db
   const recentChats = [
@@ -83,24 +84,152 @@ export default function ChatNav() {
 
   const providers = [
     {
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 48 48"
+          className="text-foreground"
+          fill="currentColor"
+        >
+          <path d="M44.559 19.646a11.957 11.957 0 0 0-1.028-9.822 12.094 12.094 0 0 0-13.026-5.802A11.962 11.962 0 0 0 21.485 0 12.097 12.097 0 0 0 9.95 8.373a11.964 11.964 0 0 0-7.997 5.8A12.097 12.097 0 0 0 3.44 28.356a11.957 11.957 0 0 0 1.028 9.822 12.094 12.094 0 0 0 13.026 5.802 11.953 11.953 0 0 0 9.02 4.02 12.096 12.096 0 0 0 11.54-8.379 11.964 11.964 0 0 0 7.997-5.8 12.099 12.099 0 0 0-1.491-14.177zM26.517 44.863a8.966 8.966 0 0 1-5.759-2.082 6.85 6.85 0 0 0 .284-.16L30.6 37.1c.49-.278.79-.799.786-1.361V22.265l4.04 2.332a.141.141 0 0 1 .078.111v11.16a9.006 9.006 0 0 1-8.987 8.995zM7.191 36.608a8.957 8.957 0 0 1-1.073-6.027c.071.042.195.119.284.17l9.558 5.52a1.556 1.556 0 0 0 1.57 0l11.67-6.738v4.665a.15.15 0 0 1-.057.124l-9.662 5.579a9.006 9.006 0 0 1-12.288-3.293zM4.675 15.744a8.966 8.966 0 0 1 4.682-3.943c0 .082-.005.228-.005.33v11.042a1.555 1.555 0 0 0 .785 1.359l11.669 6.736-4.04 2.333a.143.143 0 0 1-.136.012L7.967 28.03a9.006 9.006 0 0 1-3.293-12.284zm33.19 7.724L26.196 16.73l4.04-2.331a.143.143 0 0 1 .136-.012l9.664 5.579c4.302 2.485 5.776 7.989 3.29 12.29a8.991 8.991 0 0 1-4.68 3.943V24.827a1.553 1.553 0 0 0-.78-1.36zm4.02-6.051c-.07-.044-.195-.119-.283-.17l-9.558-5.52a1.556 1.556 0 0 0-1.57 0l-11.67 6.738V13.8a.15.15 0 0 1 .057-.124l9.662-5.574a8.995 8.995 0 0 1 13.36 9.315zm-25.277 8.315-4.04-2.333a.141.141 0 0 1-.079-.11v-11.16a8.997 8.997 0 0 1 14.753-6.91c-.073.04-.2.11-.283.161L17.4 10.9a1.552 1.552 0 0 0-.786 1.36l-.006 13.469zM18.803 21l5.198-3.002 5.197 3V27l-5.197 3-5.198-3z" />
+        </svg>
+      ),
+      href: "https://platform.openai.com/docs/overview",
       id: "openai",
       name: "OpenAI",
       description: "Access OpenAI models",
       placeholder: "sk-...",
     },
     {
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          shapeRendering="geometricPrecision"
+          textRendering="geometricPrecision"
+          imageRendering="optimizeQuality"
+          fillRule="evenodd"
+          clipRule="evenodd"
+          viewBox="0 0 512 512"
+        >
+          <rect
+            fill="#CC9B7A"
+            width="512"
+            height="512"
+            rx="104.187"
+            ry="105.042"
+          />
+          <path
+            fill="#1F1F1E"
+            fillRule="nonzero"
+            d="M318.663 149.787h-43.368l78.952 212.423 43.368.004-78.952-212.427zm-125.326 0l-78.952 212.427h44.255l15.932-44.608 82.846-.004 16.107 44.612h44.255l-79.126-212.427h-45.317zm-4.251 128.341l26.91-74.701 27.083 74.701h-53.993z"
+          />
+        </svg>
+      ),
+      href: "https://www.anthropic.com/api",
       id: "claude",
       name: "Anthropic Claude",
       description: "Access Claude models",
       placeholder: "sk-ant-...",
     },
     {
+      icon: (
+        <svg
+          width="512"
+          height="512"
+          viewBox="0 0 512 512"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="currentColor"
+          stroke="currentColor"
+        >
+          <g clipPath="url(#clip0_205_3)">
+            <path
+              d="M3 248.945C18 248.945 76 236 106 219C136 202 136 202 198 158C276.497 102.293 332 120.945 423 120.945"
+              strokeWidth="90"
+            />
+            <path d="M511 121.5L357.25 210.268L357.25 32.7324L511 121.5Z" />
+            <path
+              d="M0 249C15 249 73 261.945 103 278.945C133 295.945 133 295.945 195 339.945C273.497 395.652 329 377 420 377"
+              strokeWidth="90"
+            />
+            <path d="M508 376.445L354.25 287.678L354.25 465.213L508 376.445Z" />
+          </g>
+        </svg>
+      ),
+      href: "https://openrouter.ai/settings/keys",
       id: "openrouter",
       name: "OpenRouter",
       description: "Access multiple AI models",
       placeholder: "sk-or-...",
     },
   ];
+
+  useEffect(() => {
+    fetchAPIKeys();
+  }, []);
+
+  const fetchAPIKeys = async () => {
+    try {
+      const response = await fetch("/api/keys");
+      if (!response.ok) {
+        throw new Error("Failed to fetch API keys");
+      }
+      const data = await response.json();
+      setApiKeys(data.keys || {});
+    } catch (error) {
+      console.error("Error fetching API keys:", error);
+    }
+  };
+
+  const saveAPIKey = async (provider: string, key: string) => {
+    try {
+      const response = await fetch("/api/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: provider,
+          key: key,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save API key");
+      }
+
+      // Refresh the keys after saving
+      await fetchAPIKeys();
+    } catch (error) {
+      console.error("Error saving API key:", error);
+    }
+  };
+
+  const deleteAPIKey = async (provider: string) => {
+    try {
+      const response = await fetch(`/api/keys?type=${provider}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete API key");
+      }
+
+      // Refresh the keys after deletion
+      await fetchAPIKeys();
+    } catch (error) {
+      console.error("Error deleting API key:", error);
+    }
+  };
+
+  const handleAPIKeyChange = async (provider: string, value: string) => {
+    setKeyInput(value);
+
+    if (value.trim()) {
+      await saveAPIKey(provider, value);
+    } else {
+      await deleteAPIKey(provider);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -130,21 +259,6 @@ export default function ChatNav() {
   }, [supabase]);
 
   useEffect(() => {
-    const storedModelName = localStorage.getItem("openrouter_model_name");
-    if (storedModelName) {
-      setOpenrouterModelName(storedModelName);
-    }
-
-    // Load saved API keys
-    const savedKeys = {
-      openai: localStorage.getItem("openai_api_key") || "",
-      claude: localStorage.getItem("claude_api_key") || "",
-      openrouter: localStorage.getItem("openrouter_api_key") || "",
-    };
-    setApiKeys(savedKeys);
-  }, []);
-
-  useEffect(() => {
     localStorage.setItem("openrouter_model_name", openrouterModelName);
   }, [openrouterModelName]);
 
@@ -154,14 +268,6 @@ export default function ChatNav() {
     } catch (error) {
       console.error("Error signing out:", error);
     }
-  };
-
-  const handleAPIKeyChange = (provider: string, value: string) => {
-    setApiKeys((prev) => ({
-      ...prev,
-      [provider]: value,
-    }));
-    localStorage.setItem(`${provider}_api_key`, value);
   };
 
   if (loading) {
@@ -202,15 +308,6 @@ export default function ChatNav() {
                     </Button>
                   ))}
                 </div>
-
-                <Button
-                  variant="ghost"
-                  className="flex items-center w-full gap-2 justify-start mt-6"
-                  onClick={() => setShowAPIDialog(true)}
-                >
-                  <Key className="h-4 w-4" />
-                  <span>API Keys</span>
-                </Button>
               </div>
 
               <SheetFooter>
@@ -268,10 +365,6 @@ export default function ChatNav() {
                         <span>API Keys</span>
                       </DropdownMenuItem>
                       <DropdownMenuSub>
-                        <DropdownMenuSubTrigger>
-                          <Sun className="mr-2 h-4 w-4" />
-                          <span>Theme</span>
-                        </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="w-48">
                           <DropdownMenuItem>
                             <Sun className="mr-2 h-4 w-4" />
@@ -343,16 +436,30 @@ export default function ChatNav() {
                       variant={
                         selectedProvider === provider.id ? "outline" : "ghost"
                       }
-                      className="w-full justify-between h-auto"
+                      className="w-full justify-between h-16 px-6"
                       onClick={() => setSelectedProvider(provider.id)}
                     >
-                      <div className="text-left">
-                        <div className="font-medium">{provider.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {provider.description}
+                      <div className="flex items-center gap-4">
+                        <div>{provider.icon}</div>
+                        <div className="flex flex-col text-left">
+                          <div className="font-medium">{provider.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {provider.description}
+                          </div>
                         </div>
                       </div>
-                      {selectedProvider === provider.id && <Check />}
+                      <div className="flex gap-4 items-center">
+                        {selectedProvider === provider.id && <Check />}
+                        <Link href={provider.href} target="_blank">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </Button>
                   ))}
                 </div>
@@ -363,23 +470,42 @@ export default function ChatNav() {
                       {providers.find((p) => p.id === selectedProvider)?.name}
                     </CardTitle>
                     <CardDescription>
-                      Enter your API key for{" "}
-                      {providers.find((p) => p.id === selectedProvider)?.name}
+                      {apiKeys[selectedProvider as keyof typeof apiKeys]
+                        ? "API key is saved and encrypted"
+                        : "Enter your API key for " +
+                          providers.find((p) => p.id === selectedProvider)
+                            ?.name}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Input
-                      type="password"
-                      placeholder={
-                        providers.find((p) => p.id === selectedProvider)
-                          ?.placeholder
-                      }
-                      value={apiKeys[selectedProvider as keyof typeof apiKeys]}
-                      onChange={(e) =>
-                        handleAPIKeyChange(selectedProvider, e.target.value)
-                      }
-                      className="w-full"
-                    />
+                    <div className="space-y-4">
+                      <Input
+                        type="password"
+                        placeholder={
+                          providers.find((p) => p.id === selectedProvider)
+                            ?.placeholder
+                        }
+                        value={keyInput}
+                        onChange={(e) =>
+                          handleAPIKeyChange(selectedProvider, e.target.value)
+                        }
+                        className="w-full"
+                      />
+                      {apiKeys[selectedProvider as keyof typeof apiKeys] && (
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => deleteAPIKey(selectedProvider)}
+                        >
+                          Remove API Key
+                        </Button>
+                      )}
+                    </div>
+
+                    <p className="text-center text-xs text-muted-foreground mt-6">
+                      Your API keys are encrypted with AES-256 encryption and
+                      stored securely to maintain confidentiality and integrity.
+                    </p>
                   </CardContent>
                 </Card>
               </div>
