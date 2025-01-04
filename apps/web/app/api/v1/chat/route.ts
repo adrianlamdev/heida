@@ -4,9 +4,16 @@ import type { NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { decryptText } from "@/lib/crypto";
 
-// export const runtime = "edge";
-
 const RAG_API_URL = process.env.RAG_API_URL || "http://localhost:8000";
+
+interface MessageMetadata {
+  model: string;
+  features: {
+    cot_enabled: boolean;
+    web_search_enabled: boolean;
+    type?: string;
+  };
+}
 
 // Helper function to rewrite search query
 async function rewriteSearchQuery(
@@ -74,31 +81,39 @@ async function shouldPerformWebSearch(
   }
 }
 
+// Helper function to generate title
+async function generateTitle(message: string, openai: OpenAI): Promise<string> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "google/gemini-flash-1.5-8b",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Generate a short, descriptive title (max 100 characters) for this chat based on the first message. Return only the title without quotes or explanation.",
+        },
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 50,
+    });
+
+    return response.choices[0]?.message?.content?.trim() || "New Chat";
+  } catch (error) {
+    console.error("Error generating title:", error);
+    return "New Chat";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
-    const messages = JSON.parse(formData.get("messages") as string) || [];
-    const model = (formData.get("model") as string) || "";
-    const cotEnabled = (formData.get("cotEnabled") as string) === "true";
-    const webSearchEnabled =
-      (formData.get("webSearchEnabled") as string) === "true";
-    const attachments: File[] = [];
-
-    const fileKeys = Array.from(formData.keys()).filter((key) =>
-      key.startsWith("attachments"),
-    );
-    for (const key of fileKeys) {
-      const files = formData.getAll(key) as File[];
-      attachments.push(...files);
-    }
-
-    if (!messages || !Array.isArray(messages)) {
-      return new NextResponse("Messages are required", { status: 400 });
-    }
-    if (!model) {
-      return new NextResponse("Model name is required", { status: 400 });
-    }
+    const chatId = formData.get("chatId") as string;
+    let currentChatId = chatId;
 
     const supabase = await createClient();
 
@@ -136,9 +151,69 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const messages = JSON.parse(formData.get("messages") as string) || [];
+
+    if (!currentChatId) {
+      const title = await generateTitle(messages[0]?.content || "", openai);
+      const { data: chatData, error: chatError } = await supabase
+        .from("user_chats")
+        .insert([
+          {
+            user_id: user.id,
+            title: title,
+          },
+        ])
+        .select();
+
+      if (chatError) throw chatError;
+      currentChatId = chatData[0].id;
+    }
+
+    // TODO: fix choosing model
+    // - client rn can't do it
+    const model = (formData.get("model") as string) || "deepseek/deepseek-chat";
+    const cotEnabled = (formData.get("cotEnabled") as string) === "true";
+    const webSearchEnabled =
+      (formData.get("webSearchEnabled") as string) === "true";
+    const attachments: File[] = [];
+
+    const fileKeys = Array.from(formData.keys()).filter((key) =>
+      key.startsWith("attachments"),
+    );
+    for (const key of fileKeys) {
+      const files = formData.getAll(key) as File[];
+      attachments.push(...files);
+    }
+
+    if (!messages || !Array.isArray(messages)) {
+      return new NextResponse("Messages are required", { status: 400 });
+    }
+    if (!model) {
+      return new NextResponse("Model name is required", { status: 400 });
+    }
+
+    for (const message of messages) {
+      const { error: messageError } = await supabase.from("messages").insert([
+        {
+          chat_id: currentChatId,
+          role: message.role,
+          content: message.content,
+          metadata: message.metadata || {},
+        },
+      ]);
+
+      if (messageError) throw messageError;
+    }
+
     const stream = new ReadableStream({
       async start(controller) {
         let searchResults = null;
+
+        controller.enqueue(
+          new TextEncoder().encode(
+            `data: ${JSON.stringify({ status: "chat_created", chatId: currentChatId })}\n\n`,
+          ),
+        );
 
         if (webSearchEnabled) {
           controller.enqueue(
@@ -229,6 +304,25 @@ export async function POST(req: NextRequest) {
               )
               .join("\n")}`,
           };
+          const { error: searchContextError } = await supabase
+            .from("messages")
+            .insert([
+              {
+                chat_id: currentChatId,
+                role: "system",
+                content: searchContext.content,
+                metadata: {
+                  model,
+                  features: {
+                    cot_enabled: cotEnabled,
+                    web_search_enabled: webSearchEnabled,
+                    type: "search_context",
+                  },
+                },
+              },
+            ]);
+          if (searchContextError) throw searchContextError;
+
           augmentedMessages.push(searchContext);
         }
 
@@ -238,10 +332,9 @@ export async function POST(req: NextRequest) {
 
         // Add CoT system message if enabled
         if (cotEnabled) {
-          finalMessages = [
-            {
-              role: "system",
-              content: `You are an advanced reasoning engine that approaches problems through structured decomposition and explicit chain-of-thought analysis. Your responses should demonstrate clear, logical progression from initial understanding to final conclusion.
+          const systemMessage = {
+            role: "system",
+            content: `You are an advanced reasoning engine that approaches problems through structured decomposition and explicit chain-of-thought analysis. Your responses should demonstrate clear, logical progression from initial understanding to final conclusion.
 Keep responses conversational and avoid mechanical phrases like "clear, concise answer" or "key supporting points." Present your analysis as a natural flow of thought rather than a rigid template.
 
 Format ALL responses using this exact structure:
@@ -294,9 +387,29 @@ Requirements:
 5. ALWAYS structure using the XML tags above
 6. If calculations involve currency, show in USD and mention the currency
 7. Round numbers to 2 decimal places unless precision needed`,
-            },
-            ...augmentedMessages,
-          ];
+          };
+
+          const { error: systemMessageError } = await supabase
+            .from("messages")
+            .insert([
+              {
+                chat_id: currentChatId,
+                role: "system",
+                content: systemMessage.content,
+                metadata: {
+                  model,
+                  features: {
+                    cot_enabled: cotEnabled,
+                    web_search_enabled: webSearchEnabled,
+                    type: "cot_prompt",
+                  },
+                },
+              },
+            ]);
+
+          if (systemMessageError) throw systemMessageError;
+
+          finalMessages = [systemMessage, ...augmentedMessages];
         }
 
         const response = await openai.chat.completions.create({
@@ -306,9 +419,12 @@ Requirements:
           stream: true,
         });
 
+        let assistantMessage = "";
+
         for await (const part of response) {
           const chunk = part.choices[0]?.delta?.content || "";
           if (chunk) {
+            assistantMessage += chunk;
             const data = JSON.stringify({
               choices: [{ delta: { content: chunk } }],
             });
@@ -317,6 +433,25 @@ Requirements:
         }
 
         controller.close();
+
+        const { error: assistantMessageError } = await supabase
+          .from("messages")
+          .insert([
+            {
+              chat_id: currentChatId,
+              role: "assistant",
+              content: assistantMessage,
+              metadata: {
+                model,
+                features: {
+                  cot_enabled: cotEnabled,
+                  web_search_enabled: webSearchEnabled,
+                },
+              },
+            },
+          ]);
+
+        if (assistantMessageError) throw assistantMessageError;
       },
     });
 
@@ -331,4 +466,28 @@ Requirements:
     console.error("Chat API error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  const { data, error } = await supabase
+    .from("user_chats")
+    .select()
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error fetching user chats:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+
+  return NextResponse.json(data);
 }

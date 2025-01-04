@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
 import "katex/dist/katex.min.css";
+import useSWR from "swr";
 import {
   X,
   File,
@@ -23,6 +24,14 @@ import { Card } from "@workspace/ui/components/card";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useParams } from "next/navigation";
+
+// TODO: move to utils folder
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch chat data");
+  return res.json();
+};
 
 // TODO: move to types folder
 interface Message {
@@ -367,11 +376,22 @@ const MessageContent = ({ content }: { content: string }) => {
 };
 
 export default function ChatPage() {
+  const params = useParams();
+  const chatId = params.id as string;
+
+  const {
+    data: chatData,
+    error,
+    mutate,
+  } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>("");
-  const [chatId, setChatId] = useState("");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -379,10 +399,15 @@ export default function ChatPage() {
   const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
-
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chatData?.messages) {
+      setMessages(chatData.messages);
+      setModel(chatData.model || "");
+    }
+  }, [chatData]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -438,7 +463,6 @@ export default function ChatPage() {
       resetFileAttachment();
 
       const formData = new FormData();
-      formData.append("chatId", chatId || "");
       formData.append("messages", JSON.stringify([...messages, userMessage]));
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
@@ -446,7 +470,7 @@ export default function ChatPage() {
         formData.append(`attachments[${index}]`, file);
       });
 
-      const response = await fetch("/api/v1/chat", {
+      const response = await fetch(`/api/v1/chat/${chatId}`, {
         method: "POST",
         body: formData,
         signal: abortControllerRef.current.signal,
@@ -474,13 +498,10 @@ export default function ChatPage() {
             const data = JSON.parse(line.slice(6));
 
             if (data.status) {
-              if (data.status === "chat_created" && data.chatId) {
-                setChatId(data.chatId);
-                window.history.replaceState({}, "", `/chat/${data.chatId}`);
-              }
               if (data.status === "completed") {
                 setStatus("");
                 setShowStatus(false);
+                mutate();
                 break;
               }
               setStatus(data.status);
