@@ -67,6 +67,7 @@ import {
 } from "@workspace/ui/components/card";
 import Link from "next/link";
 import useSWR from "swr";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -94,6 +95,12 @@ export default function ChatNav() {
     claude: false,
     openrouter: false,
   });
+  const [oAuthLoading, setOAuthLoading] = useState<string | null>(null);
+  const [oAuthError, setOAuthError] = useState<string | null>(null);
+
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>(
+    [],
+  );
   const [keyInput, setKeyInput] = useState("");
 
   const providers = [
@@ -195,6 +202,33 @@ export default function ChatNav() {
           />
         </svg>
       ),
+      handler: async () => {
+        try {
+          setOAuthLoading("github");
+          setOAuthError(null);
+
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: "github",
+            options: {
+              redirectTo: `${window.location.origin}/api/auth/callback?next=/chat`,
+            },
+          });
+
+          if (error) {
+            setOAuthError("Failed to connect to GitHub. Please try again.");
+            return;
+          }
+
+          if (data.url) {
+            window.location.href = data.url;
+          }
+        } catch (err) {
+          setOAuthError("An unexpected error occurred. Please try again.");
+          console.error("GitHub OAuth error:", err);
+        } finally {
+          setOAuthLoading(null);
+        }
+      },
     },
   ];
 
@@ -205,7 +239,6 @@ export default function ChatNav() {
   const {
     data: chatsData,
     error: chatsError,
-    mutate: mutateChats,
     isLoading,
   } = useSWR<[]>(user ? "/api/v1/chat" : null, fetcher, {
     revalidateOnFocus: true,
@@ -276,31 +309,76 @@ export default function ChatNav() {
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.app_metadata?.provider === "github") {
+          setConnectedIntegrations(["github"]);
+        }
+      } else {
+        setUser(null);
+        setConnectedIntegrations([]);
+      }
+    });
+
+    (async () => {
       try {
         const {
           data: { user },
+          error,
         } = await supabase.auth.getUser();
+
+        console.log("Got user data:", user?.app_metadata);
+
+        if (error) {
+          console.error("Error fetching user details:", error);
+          return;
+        }
+
         setUser(user);
-
-        if (user) {
-          const { data, error } = await supabase.auth.getUser();
-
-          if (error) {
-            console.error("Error fetching user details:", error);
-          } else {
-            setUser(user);
-          }
+        if (user?.app_metadata.providers.includes("github"));
+        {
+          setConnectedIntegrations(["github"]);
         }
       } catch (error) {
         console.error("Error:", error);
       } finally {
         setLoading(false);
       }
-    };
+    })();
 
-    fetchUser();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
+
+  const fetchUser = async () => {
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Error fetching user details:", error);
+        return;
+      }
+
+      setUser(user);
+      if (user?.app_metadata?.provider === "github") {
+        console.log(
+          "Setting connected integrations",
+          user.app_metadata.provider,
+        );
+        setConnectedIntegrations(["github"]);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("openrouter_model_name", openrouterModelName);
@@ -602,11 +680,12 @@ export default function ChatNav() {
                     <Button
                       key={integration.id}
                       variant="outline"
-                      // variant={
-                      //   selectedProvider === provider.id ? "outline" : "ghost"
-                      // }
                       className="w-full justify-between h-16 pl-6 pr-4 group"
-                      // onClick={() => setSelectedProvider(provider.id)}
+                      onClick={integration.handler}
+                      disabled={
+                        oAuthLoading === integration.id ||
+                        connectedIntegrations.includes(integration.id)
+                      }
                     >
                       <div className="flex items-center gap-4">
                         <div>{integration.icon}</div>
@@ -617,15 +696,33 @@ export default function ChatNav() {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        className="hover:bg-transparent text-muted-foreground group-hover:text-primary"
-                      >
-                        Connect
-                      </Button>
-                      {/* <Check /> */}
+                      <div className="flex items-center gap-2">
+                        {oAuthLoading === integration.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Connecting...</span>
+                          </>
+                        ) : connectedIntegrations.includes(integration.id) ? (
+                          <div className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 flex items-center gap-2 rounded-md px-4 py-2">
+                            <Check className="h-4 w-4" />
+                            <span className="">Connected</span>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            className="hover:bg-transparent text-muted-foreground group-hover:text-primary"
+                          >
+                            Connect
+                          </Button>
+                        )}
+                      </div>
                     </Button>
                   ))}
+                  {oAuthError && (
+                    <Alert className="max-w-lg backdrop-blur bg-rose-800/20 border-rose-800/30 text-rose-700 mx-auto">
+                      <AlertDescription>{oAuthError}</AlertDescription>
+                    </Alert>
+                  )}
                 </div>
 
                 {/* <Card className="h-full"> */}
