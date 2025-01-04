@@ -468,7 +468,7 @@ export default function ChatNav() {
           </Sheet>
 
           <Dialog open={showAPIDialog} onOpenChange={setShowAPIDialog}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle>API Key Management</DialogTitle>
                 <DialogDescription>
@@ -497,7 +497,13 @@ export default function ChatNav() {
                         </div>
                       </div>
                       <div className="flex gap-4 items-center">
-                        {selectedProvider === provider.id && <Check />}
+                        {/* FIXME: check and set check if provider has key */}
+                        {selectedProvider === provider.id && (
+                          <div className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 flex items-center gap-2 rounded-md px-4 py-2">
+                            <Check className="h-4 w-4" />
+                            <span className="">Set</span>
+                          </div>
+                        )}
                         <Link href={provider.href} target="_blank">
                           <Button
                             variant="ghost"
