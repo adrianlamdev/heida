@@ -26,6 +26,7 @@ import {
   PlugZap,
   Rocket,
   Settings,
+  Loader2,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import {
@@ -65,14 +66,25 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card";
 import Link from "next/link";
+import useSWR from "swr";
+
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to fetch chats");
+  }
+  return response.json();
+};
 
 export default function ChatNav() {
   const supabase = createClient();
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [openrouterModelName, setOpenrouterModelName] = useState<string>(
     "deepseek/deepseek-chat",
   );
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [showAPIDialog, setShowAPIDialog] = useState(false);
   const [showChatSettingsDialog, setShowChatSettingsDialog] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("openai");
@@ -82,14 +94,6 @@ export default function ChatNav() {
     openrouter: false,
   });
   const [keyInput, setKeyInput] = useState("");
-
-  // TODO: fetch recents from db
-  const recentChats = [
-    { id: 1, title: "Chat with Support" },
-    { id: 2, title: "Project Discussion" },
-    { id: 3, title: "Team Meeting" },
-    { id: 4, title: "Product Feedback" },
-  ];
 
   const providers = [
     {
@@ -175,6 +179,16 @@ export default function ChatNav() {
   useEffect(() => {
     fetchAPIKeys();
   }, []);
+
+  const {
+    data: chatsData,
+    error: chatsError,
+    mutate: mutateChats,
+    isLoading,
+  } = useSWR<[]>(user ? "/api/v1/chat" : null, fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
 
   const fetchAPIKeys = async () => {
     try {
@@ -293,7 +307,7 @@ export default function ChatNav() {
 
       <div className="w-full max-w-3xl">
         <div className="flex items-center justify-between w-full">
-          <Sheet>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="w-8 h-8">
                 <Menu className="h-5 w-5" />
@@ -307,13 +321,32 @@ export default function ChatNav() {
 
               <div className="flex-1 min-h-0">
                 <div className="mt-4 space-y-2">
-                  {recentChats.map((chat) => (
+                  {chatsError && (
+                    <div className="text-red-500 text-sm">
+                      Error loading chats
+                    </div>
+                  )}
+                  {!chatsData && !chatsError && (
+                    <div className="text-muted-foreground text-sm">
+                      Loading chats...
+                    </div>
+                  )}
+                  {chatsData?.map((chat) => (
                     <Button
                       key={chat.id}
                       variant="ghost"
-                      className="flex items-center justify-between w-full p-2 text-left hover:bg-secondary"
+                      className="flex items-center justify-between w-full px-4 py-2 text-left hover:bg-secondary h-14"
+                      asChild
+                      onClick={() => setSheetOpen(false)}
                     >
-                      <div className="flex items-center">{chat.title}</div>
+                      <Link href={`/chat/${chat.id}`}>
+                        <div className="flex items-center space-x-2">
+                          <span>{chat.title}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(chat.created_at).toLocaleDateString()}
+                        </div>
+                      </Link>
                     </Button>
                   ))}
                 </div>
@@ -634,8 +667,11 @@ export default function ChatNav() {
             variant="ghost"
             size="icon"
             className="w-8 h-8 text-muted-foreground hover:text-primary hover:bg-transparent"
+            asChild
           >
-            <MessageCirclePlus className="h-5 w-5" />
+            <Link href="/chat">
+              <MessageCirclePlus className="h-5 w-5" />
+            </Link>
           </Button>
         </div>
       </div>

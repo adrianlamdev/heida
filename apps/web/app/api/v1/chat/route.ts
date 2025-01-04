@@ -482,7 +482,8 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from("user_chats")
     .select()
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching user chats:", error);

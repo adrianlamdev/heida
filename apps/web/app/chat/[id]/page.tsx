@@ -381,6 +381,7 @@ export default function ChatPage() {
 
   const {
     data: chatData,
+    isLoading,
     error,
     mutate,
   } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher, {
@@ -390,7 +391,7 @@ export default function ChatPage() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>("");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -444,7 +445,7 @@ export default function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if ((!input.trim() && attachedFiles.length === 0) || loading) return;
 
     try {
       setIsLoading(true);
@@ -539,6 +540,14 @@ export default function ChatPage() {
       abortControllerRef.current = null;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-screen flex justify-center items-center">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col h-full relative items-center justify-center">
@@ -685,7 +694,7 @@ ${
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={isLoading ? "loading" : "idle"}
+                key={loading ? "loading" : "idle"}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
@@ -697,11 +706,11 @@ ${
                   size="icon"
                   className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
-                    !isLoading && !input.trim() && attachedFiles.length === 0
+                    !loading && !input.trim() && attachedFiles.length === 0
                   }
                   onClick={(e) => {
                     e.preventDefault();
-                    if (isLoading) {
+                    if (loading) {
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         setIsLoading(false);
@@ -713,7 +722,7 @@ ${
                     }
                   }}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <ArrowUp className="h-5 w-5" />
