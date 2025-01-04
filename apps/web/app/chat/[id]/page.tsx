@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
 import "katex/dist/katex.min.css";
+import useSWR from "swr";
 import {
   X,
   File,
@@ -23,6 +24,14 @@ import { Card } from "@workspace/ui/components/card";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useParams } from "next/navigation";
+
+// TODO: move to utils folder
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch chat data");
+  return res.json();
+};
 
 // TODO: move to types folder
 interface Message {
@@ -367,11 +376,23 @@ const MessageContent = ({ content }: { content: string }) => {
 };
 
 export default function ChatPage() {
+  const params = useParams();
+  const chatId = params.id as string;
+
+  const {
+    data: chatData,
+    isLoading,
+    error,
+    mutate,
+  } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>("");
-  const [chatId, setChatId] = useState("");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -379,10 +400,15 @@ export default function ChatPage() {
   const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
-
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chatData?.messages) {
+      setMessages(chatData.messages);
+      setModel(chatData.model || "");
+    }
+  }, [chatData]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -419,7 +445,7 @@ export default function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+    if ((!input.trim() && attachedFiles.length === 0) || loading) return;
 
     try {
       setIsLoading(true);
@@ -438,7 +464,6 @@ export default function ChatPage() {
       resetFileAttachment();
 
       const formData = new FormData();
-      formData.append("chatId", chatId || "");
       formData.append("messages", JSON.stringify([...messages, userMessage]));
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
@@ -446,7 +471,7 @@ export default function ChatPage() {
         formData.append(`attachments[${index}]`, file);
       });
 
-      const response = await fetch("/api/v1/chat", {
+      const response = await fetch(`/api/v1/chat/${chatId}`, {
         method: "POST",
         body: formData,
         signal: abortControllerRef.current.signal,
@@ -474,13 +499,10 @@ export default function ChatPage() {
             const data = JSON.parse(line.slice(6));
 
             if (data.status) {
-              if (data.status === "chat_created" && data.chatId) {
-                setChatId(data.chatId);
-                window.history.replaceState({}, "", `/chat/${data.chatId}`);
-              }
               if (data.status === "completed") {
                 setStatus("");
                 setShowStatus(false);
+                mutate();
                 break;
               }
               setStatus(data.status);
@@ -518,6 +540,14 @@ export default function ChatPage() {
       abortControllerRef.current = null;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-screen flex justify-center items-center">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col h-full relative items-center justify-center">
@@ -664,7 +694,7 @@ ${
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={isLoading ? "loading" : "idle"}
+                key={loading ? "loading" : "idle"}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
@@ -676,11 +706,11 @@ ${
                   size="icon"
                   className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
-                    !isLoading && !input.trim() && attachedFiles.length === 0
+                    !loading && !input.trim() && attachedFiles.length === 0
                   }
                   onClick={(e) => {
                     e.preventDefault();
-                    if (isLoading) {
+                    if (loading) {
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         setIsLoading(false);
@@ -692,7 +722,7 @@ ${
                     }
                   }}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <ArrowUp className="h-5 w-5" />
