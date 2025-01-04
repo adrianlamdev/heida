@@ -1,11 +1,24 @@
 "use client";
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
 
 const Nav = ({ className }: { className?: string }) => {
+  const [hasScrolled, setHasScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setHasScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const springConfig = {
     type: "spring",
     stiffness: 260,
@@ -29,8 +42,12 @@ const Nav = ({ className }: { className?: string }) => {
   };
 
   return (
-    <div className="fixed top-0 inset-x-0 z-50 flex justify-center w-screen bg-background/80 backdrop-blur-sm px-4">
-      <div className="max-w-5xl w-full">
+    <div
+      className={`fixed top-0 inset-x-0 z-50 flex justify-center w-screen backdrop-blur-sm px-4 transition-colors duration-200 ${
+        hasScrolled ? "bg-background/80" : ""
+      }`}
+    >
+      <div className="max-w-6xl w-full">
         <AnimatePresence mode="wait">
           <motion.div
             variants={fadeInUpVariants}

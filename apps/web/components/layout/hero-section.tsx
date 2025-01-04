@@ -129,7 +129,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+    <section className="relative h-screen bg-gradient-to-tr from-background to-secondary/30 flex flex-col items-center justify-center overflow-hidden pb-16 md:pb-24 lg:pb-32">
       {showConfetti && (
         <ReactConfetti
           recycle={false}
@@ -148,7 +148,7 @@ export default function HeroSection() {
         >
           <div className="space-y-4">
             <motion.div variants={itemVariants} className="flex justify-center">
-              <div className="inline-flex items-center rounded-full bg-gradient-to-r from-primary/20 to-primary/10 px-4 py-1.5 text-sm border border-primary/20 backdrop-blur-sm hover:bg-primary/30 transition-colors">
+              <div className="inline-flex items-center rounded-full bg-gradient-to-r from-primary/20 to-primary/10 px-4 py-1.5 text-sm border border-primary/20 backdrop-blur-sm hover:bg-primary/15 transition-colors">
                 <Sparkles className="h-4 w-4 mr-2 text-primary" />
                 <span className="bg-gradient-to-r from-primary to-primary/70 text-transparent bg-clip-text font-medium">
                   Now in Private Beta
