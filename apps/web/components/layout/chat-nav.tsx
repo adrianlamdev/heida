@@ -28,7 +28,11 @@ import {
   Settings,
   Loader2,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -462,6 +466,10 @@ export default function ChatNav() {
                       >
                         <div className="flex justify-start items-center gap-2">
                           <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={user.user_metadata.avatar_url}
+                              alt={user.email}
+                            />
                             <AvatarFallback className="bg-secondary">
                               {user.email[0]}
                             </AvatarFallback>
