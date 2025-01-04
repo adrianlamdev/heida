@@ -129,7 +129,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative h-screen bg-gradient-to-tr from-background to-secondary/30 flex flex-col items-center justify-center overflow-hidden pb-16 md:pb-24 lg:pb-32">
+    <section className="relative h-screen bg-gradient-to-tr from-background to-secondary/50 flex flex-col items-center justify-center overflow-hidden pb-16 md:pb-24 lg:pb-32">
       {showConfetti && (
         <ReactConfetti
           recycle={false}

@@ -17,8 +17,8 @@
     "@biomejs/biome": "1.9.4",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "prettier": "^3.2.5",
-    "turbo": "^2.3.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
     "typescript": "5.5.4"
   },
   "packageManager": "pnpm@9.12.3",

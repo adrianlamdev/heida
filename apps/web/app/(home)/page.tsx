@@ -28,7 +28,7 @@ export default function HomePage() {
       <HeroSection />
       <DemoVideo />
       <FeaturesSection />
-      <FeaturesGrid />
+      {/* <FeaturesGrid /> */}
       <TechnicalFeatures />
       <WaitlistSection />
     </main>
