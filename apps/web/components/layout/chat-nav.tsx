@@ -208,7 +208,6 @@ export default function ChatNav() {
     mutate: mutateChats,
     isLoading,
   } = useSWR<[]>(user ? "/api/v1/chat" : null, fetcher, {
-    refreshInterval: 5000,
     revalidateOnFocus: true,
   });
 

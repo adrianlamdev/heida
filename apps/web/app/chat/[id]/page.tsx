@@ -26,6 +26,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useParams } from "next/navigation";
 
+const generateUUID = (): string => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 // TODO: move to utils folder
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -35,8 +43,17 @@ const fetcher = async (url: string) => {
 
 // TODO: move to types folder
 interface Message {
+  id: string;
+  chat_id: string;
   role: "user" | "assistant";
   content: string;
+  created_at: string;
+  metadata?: {
+    model?: string;
+    features?: {
+      web_search_enabled: boolean;
+    };
+  };
 }
 
 interface CodeBlockProps {
@@ -384,10 +401,7 @@ export default function ChatPage() {
     isLoading,
     error,
     mutate,
-  } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -443,6 +457,10 @@ export default function ChatPage() {
     }
   }, [fileAttachmentReset]);
 
+  useEffect(() => {
+    console.log("Current messages:", messages);
+  }, [messages]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!input.trim() && attachedFiles.length === 0) || loading) return;
@@ -455,16 +473,35 @@ export default function ChatPage() {
       abortControllerRef.current = new AbortController();
 
       const userMessage: Message = {
+        id: generateUUID(),
+        chat_id: chatId,
         role: "user",
         content: input.trim(),
+        created_at: new Date().toISOString(),
+        metadata: {},
       };
+      console.log("Adding user message:", userMessage); // Add this line
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
       resetFileAttachment();
 
       const formData = new FormData();
-      formData.append("messages", JSON.stringify([...messages, userMessage]));
+      formData.append(
+        "messages",
+        JSON.stringify([
+          ...messages,
+          {
+            ...userMessage,
+            id: generateUUID(),
+            chat_id: chatId,
+            role: "user",
+            content: input.trim(),
+            created_at: new Date().toISOString(),
+            metadata: {},
+          },
+        ]),
+      );
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
       attachedFiles.forEach((file, index) => {
@@ -483,7 +520,21 @@ export default function ChatPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const initialAssistantMessage: Message = {
+        id: generateUUID(),
+        chat_id: chatId,
+        role: "assistant",
+        content: "",
+        created_at: new Date().toISOString(),
+        metadata: {
+          model,
+          features: {
+            web_search_enabled: webSearchEnabled,
+          },
+        },
+      };
+
+      setMessages((prev) => [...prev, initialAssistantMessage]);
 
       let assistantMessage = "";
 
@@ -527,10 +578,19 @@ export default function ChatPage() {
         setMessages((prev) => [
           ...prev,
           {
+            id: generateUUID(),
+            chat_id: chatId,
             role: "assistant",
             content:
               "I apologize, but I encountered an error. Please try again.",
-          },
+            created_at: new Date().toISOString(),
+            metadata: {
+              model,
+              features: {
+                web_search_enabled: webSearchEnabled,
+              },
+            },
+          } as Message,
         ]);
       }
     } finally {

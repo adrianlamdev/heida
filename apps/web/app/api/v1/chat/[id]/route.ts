@@ -74,8 +74,9 @@ const chatParamsSchema = z.string();
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
   try {
     const id = chatParamsSchema.parse(params.id);
     const supabase = await createClient();
@@ -129,8 +130,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
   try {
     const id = chatParamsSchema.parse(params.id);
     const formData = await req.formData();
@@ -194,16 +196,20 @@ export async function POST(
       );
     }
 
-    const { data: existingMessages } = await supabase
-      .from("messages")
-      .select("content, role, created_at")
-      .eq("chat_id", id)
-      .order("created_at", { ascending: true });
+    const { error: userMessageError } = await supabase.from("messages").insert([
+      {
+        chat_id: id,
+        role: "user",
+        content: lastMessage.content,
+        created_at: new Date().toISOString(),
+        metadata: lastMessage.metadata || {},
+      },
+    ]);
 
-    // Create a clean message history combining existing and new messages
-    const messagesToSend = existingMessages
-      ? [...existingMessages, lastMessage]
-      : [lastMessage];
+    if (userMessageError) {
+      console.error("Error saving user message:", userMessageError);
+      throw userMessageError;
+    }
 
     const messages = JSON.parse(formData.get("messages") as string) || [];
     const model = (formData.get("model") as string) || "deepseek/deepseek-chat";
