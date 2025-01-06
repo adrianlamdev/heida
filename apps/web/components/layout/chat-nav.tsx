@@ -1,56 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { type User } from "@supabase/supabase-js";
-import {
-  Menu,
-  MessageCirclePlus,
-  User as UserIcon,
-  LogOut,
-  Lock,
-  Sun,
-  Key,
-  Globe,
-  HelpCircle,
-  Keyboard,
-  Moon,
-  MoreVertical,
-  Check,
-  ExternalLink,
-  Speech,
-  MessageCircle,
-  Box,
-  Sparkle,
-  Sparkles,
-  PlugZap,
-  Rocket,
-  Settings,
-  Loader2,
-} from "lucide-react";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuTrigger,
-} from "@workspace/ui/components/dropdown-menu";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-} from "@workspace/ui/components/sheet";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -59,13 +19,41 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import { Input } from "@workspace/ui/components/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet";
+import {
+  Check,
+  ExternalLink,
+  HelpCircle,
+  Key,
+  Lock,
+  LogOut,
+  Menu,
+  MessageCircle,
+  MessageCirclePlus,
+  MoreVertical,
+  PlugZap,
+  Rocket,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 
 const fetcher = async (url: string) => {
@@ -390,11 +378,11 @@ export default function ChatNav() {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <UserIcon className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                        <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-                      </DropdownMenuItem>
+                      {/* <DropdownMenuItem> */}
+                      {/*   <UserIcon className="mr-2 h-4 w-4" /> */}
+                      {/*   <span>Profile</span> */}
+                      {/*   <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
+                      {/* </DropdownMenuItem> */}
                       <DropdownMenuItem>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Account settings</span>
@@ -409,7 +397,10 @@ export default function ChatNav() {
                         <Key className="mr-2 h-4 w-4" />
                         <span>API keys</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setShowAPIDialog(true)}>
+                      <DropdownMenuItem
+                        onClick={() => setShowAPIDialog(true)}
+                        disabled
+                      >
                         <PlugZap className="mr-2 h-4 w-4" />
                         <span>Integrations</span>
                       </DropdownMenuItem>
@@ -434,13 +425,13 @@ export default function ChatNav() {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuGroup>
-                      <DropdownMenuItem asChild>
+                      <DropdownMenuItem asChild disabled>
                         <Link href="/support">
                           <HelpCircle className="mr-2 h-4 w-4" />
                           <span>Help & support</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
+                      <DropdownMenuItem asChild disabled>
                         <Link href="/feedback">
                           <Lock className="mr-2 h-4 w-4" />
                           <span>Report an issue</span>
@@ -497,8 +488,7 @@ export default function ChatNav() {
                         </div>
                       </div>
                       <div className="flex gap-4 items-center">
-                        {/* FIXME: check and set check if provider has key */}
-                        {selectedProvider === provider.id && (
+                        {apiKeys[provider.id as keyof typeof apiKeys] && (
                           <div className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 flex items-center gap-2 rounded-md px-4 py-2">
                             <Check className="h-4 w-4" />
                             <span className="">Set</span>
@@ -598,6 +588,7 @@ export default function ChatNav() {
                           </div>
                         </div>
                       </div>
+
                       <div className="flex gap-4 items-center">
                         {selectedProvider === provider.id && <Check />}
                       </div>
