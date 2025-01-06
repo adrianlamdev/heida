@@ -70,9 +70,7 @@ async function shouldPerformWebSearch(
   }
 }
 
-const chatParamsSchema = z.object({
-  id: z.string(),
-});
+const chatParamsSchema = z.string();
 
 export async function GET(
   req: NextRequest,
