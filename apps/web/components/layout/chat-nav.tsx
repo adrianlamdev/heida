@@ -44,6 +44,7 @@ import {
   Key,
   Lock,
   LogOut,
+  Mail,
   Menu,
   MessageCircle,
   MessageCirclePlus,
@@ -51,6 +52,8 @@ import {
   PlugZap,
   Rocket,
   Settings,
+  Shield,
+  UserIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -74,8 +77,10 @@ export default function ChatNav() {
   );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showAPIDialog, setShowAPIDialog] = useState(false);
+  const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [showChatSettingsDialog, setShowChatSettingsDialog] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState("openai");
+  const [selectedProvider, setSelectedProvider] = useState("openrouter");
+  const [selectedSection, setSelectedSection] = useState("profile");
   const [apiKeys, setApiKeys] = useState({
     openai: false,
     claude: false,
@@ -100,6 +105,7 @@ export default function ChatNav() {
       name: "OpenAI",
       description: "Access OpenAI models",
       placeholder: "sk-...",
+      disabled: true,
     },
     {
       icon: (
@@ -131,6 +137,7 @@ export default function ChatNav() {
       name: "Anthropic Claude",
       description: "Access Claude models",
       placeholder: "sk-ant-...",
+      disabled: true,
     },
     {
       icon: (
@@ -161,6 +168,28 @@ export default function ChatNav() {
       name: "OpenRouter",
       description: "Access multiple AI models",
       placeholder: "sk-or-...",
+      disabled: false,
+    },
+  ];
+
+  const accountSections = [
+    {
+      id: "profile",
+      name: "Profile Settings",
+      description: "Manage your personal information",
+      icon: UserIcon,
+    },
+    {
+      id: "email",
+      name: "Email Settings",
+      description: "Update your email preferences",
+      icon: Mail,
+    },
+    {
+      id: "preferences",
+      name: "Preferences",
+      description: "Customize your experience",
+      icon: Settings,
     },
   ];
 
@@ -177,6 +206,12 @@ export default function ChatNav() {
     refreshInterval: 5000,
     revalidateOnFocus: true,
   });
+
+  const {
+    data: userData,
+    error,
+    isLoading: userLoading,
+  } = useSWR("/api/v1/account", fetcher);
 
   const fetchAPIKeys = async () => {
     try {
@@ -383,7 +418,9 @@ export default function ChatNav() {
                       {/*   <span>Profile</span> */}
                       {/*   <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
                       {/* </DropdownMenuItem> */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowAccountDialog(true)}
+                      >
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Account settings</span>
                         <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
@@ -459,7 +496,7 @@ export default function ChatNav() {
           </Sheet>
 
           <Dialog open={showAPIDialog} onOpenChange={setShowAPIDialog}>
-            <DialogContent className="max-w-4xl">
+            <DialogContent className="max-w-4xl h-[50dvh]">
               <DialogHeader>
                 <DialogTitle>API Key Management</DialogTitle>
                 <DialogDescription>
@@ -472,6 +509,7 @@ export default function ChatNav() {
                   {providers.map((provider) => (
                     <Button
                       key={provider.id}
+                      disabled={provider.disabled}
                       variant={
                         selectedProvider === provider.id ? "outline" : "ghost"
                       }
@@ -494,15 +532,21 @@ export default function ChatNav() {
                             <span className="">Set</span>
                           </div>
                         )}
-                        <Link href={provider.href} target="_blank">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                        {provider.disabled ? (
+                          <div className="border rounded-lg px-4 py-2">
+                            Coming soon
+                          </div>
+                        ) : (
+                          <Link href={provider.href} target="_blank">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="hover:bg-transparent text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </Button>
                   ))}
@@ -553,6 +597,106 @@ export default function ChatNav() {
                 Your API keys are encrypted with AES-256 encryption and stored
                 securely to maintain confidentiality and integrity.
               </p>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
+            <DialogContent className="max-w-4xl h-[50dvh]">
+              <DialogHeader>
+                <DialogTitle>Account Settings</DialogTitle>
+                <DialogDescription>
+                  Manage your account settings and preferences
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pb-2 h-full">
+                <div className="space-y-4 md:border-r md:pr-4">
+                  {accountSections.map((section) => (
+                    <Button
+                      key={section.id}
+                      variant={
+                        selectedSection === section.id ? "outline" : "ghost"
+                      }
+                      className="w-full justify-between h-16 px-6"
+                      onClick={() => setSelectedSection(section.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <section.icon className="h-5 w-5" />
+                        <div className="flex flex-col text-left">
+                          <div className="font-medium">{section.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {section.description}
+                          </div>
+                        </div>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle>
+                      {
+                        accountSections.find((s) => s.id === selectedSection)
+                          ?.name
+                      }
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedSection === "profile" &&
+                        "Update your personal information"}
+                      {selectedSection === "email" &&
+                        "Manage your email settings"}
+                      {selectedSection === "security" &&
+                        "Configure your security preferences"}
+                      {selectedSection === "preferences" &&
+                        "Customize your account preferences"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {selectedSection === "profile" && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Email</label>
+                            <Input
+                              type="email"
+                              value={user?.email}
+                              disabled
+                              className="w-full bg-muted"
+                            />
+                          </div>
+                        </>
+                      )}
+                      {selectedSection === "email" && (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Email Notifications</p>
+                            <p className="text-sm text-muted-foreground">
+                              Manage your email notification preferences
+                            </p>
+                          </div>
+                          <Button variant="outline" disabled>
+                            Coming soon
+                          </Button>
+                        </div>
+                      )}
+                      {selectedSection === "preferences" && (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Language Preferences</p>
+                            <p className="text-sm text-muted-foreground">
+                              Choose your preferred language
+                            </p>
+                          </div>
+                          <Button variant="outline" disabled>
+                            Coming soon
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </DialogContent>
           </Dialog>
 
