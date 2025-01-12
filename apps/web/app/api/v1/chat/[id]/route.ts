@@ -108,7 +108,7 @@ export async function GET(
     const { data: messages, error: messagesError } = await supabase
       .from("messages")
       .select("*")
-      .eq("chat_id", params.id)
+      .eq("chat_id", id)
       .order("created_at", { ascending: true });
 
     if (messagesError) {
@@ -184,6 +184,32 @@ export async function POST(
           process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       },
     });
+
+    const incomingMessages =
+      JSON.parse(formData.get("messages") as string) || [];
+    const lastMessage = incomingMessages[incomingMessages.length - 1];
+
+    if (!lastMessage || lastMessage.role !== "user") {
+      return NextResponse.json(
+        { error: "Invalid message format" },
+        { status: 400 },
+      );
+    }
+
+    const { error: userMessageError } = await supabase.from("messages").insert([
+      {
+        chat_id: id,
+        role: "user",
+        content: lastMessage.content,
+        created_at: new Date().toISOString(),
+        metadata: lastMessage.metadata || {},
+      },
+    ]);
+
+    if (userMessageError) {
+      console.error("Error saving user message:", userMessageError);
+      throw userMessageError;
+    }
 
     const messages = JSON.parse(formData.get("messages") as string) || [];
     const model = (formData.get("model") as string) || "deepseek/deepseek-chat";

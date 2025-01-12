@@ -2,6 +2,36 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { type User } from "@supabase/supabase-js";
+import {
+  Menu,
+  MessageCirclePlus,
+  User as UserIcon,
+  LogOut,
+  Lock,
+  Sun,
+  Key,
+  Globe,
+  HelpCircle,
+  Keyboard,
+  Moon,
+  MoreVertical,
+  Check,
+  ExternalLink,
+  Speech,
+  MessageCircle,
+  Box,
+  Sparkle,
+  Sparkles,
+  PlugZap,
+  Rocket,
+  Settings,
+  Loader2,
+} from "lucide-react";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -58,6 +88,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -77,6 +108,7 @@ export default function ChatNav() {
   );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showAPIDialog, setShowAPIDialog] = useState(false);
+  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [showChatSettingsDialog, setShowChatSettingsDialog] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("openrouter");
@@ -86,6 +118,12 @@ export default function ChatNav() {
     claude: false,
     openrouter: false,
   });
+  const [oAuthLoading, setOAuthLoading] = useState<string | null>(null);
+  const [oAuthError, setOAuthError] = useState<string | null>(null);
+
+  const [connectedIntegrations, setConnectedIntegrations] = useState<string[]>(
+    [],
+  );
   const [keyInput, setKeyInput] = useState("");
 
   const providers = [
@@ -193,6 +231,55 @@ export default function ChatNav() {
     },
   ];
 
+  const integrations = [
+    {
+      id: "github",
+      name: "GitHub",
+      description: "Connect your GitHub account",
+      icon: (
+        <svg
+          width="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+            fill="currentColor"
+          />
+        </svg>
+      ),
+      handler: async () => {
+        try {
+          setOAuthLoading("github");
+          setOAuthError(null);
+
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: "github",
+            options: {
+              redirectTo: `${window.location.origin}/api/auth/callback?next=/chat`,
+              scopes: "repo read:user",
+            },
+          });
+
+          if (error) {
+            setOAuthError("Failed to connect to GitHub. Please try again.");
+            return;
+          }
+
+          if (data.url) {
+            window.location.href = data.url;
+          }
+        } catch (err) {
+          setOAuthError("An unexpected error occurred. Please try again.");
+          console.error("GitHub OAuth error:", err);
+        } finally {
+          setOAuthLoading(null);
+        }
+      },
+    },
+  ];
+
   useEffect(() => {
     fetchAPIKeys();
   }, []);
@@ -200,10 +287,8 @@ export default function ChatNav() {
   const {
     data: chatsData,
     error: chatsError,
-    mutate: mutateChats,
     isLoading,
   } = useSWR<[]>(user ? "/api/v1/chat" : null, fetcher, {
-    refreshInterval: 5000,
     revalidateOnFocus: true,
   });
 
@@ -278,31 +363,76 @@ export default function ChatNav() {
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        if (session.user.app_metadata?.provider === "github") {
+          setConnectedIntegrations(["github"]);
+        }
+      } else {
+        setUser(null);
+        setConnectedIntegrations([]);
+      }
+    });
+
+    (async () => {
       try {
         const {
           data: { user },
+          error,
         } = await supabase.auth.getUser();
+
+        console.log("Got user data:", user?.app_metadata);
+
+        if (error) {
+          console.error("Error fetching user details:", error);
+          return;
+        }
+
         setUser(user);
-
-        if (user) {
-          const { data, error } = await supabase.auth.getUser();
-
-          if (error) {
-            console.error("Error fetching user details:", error);
-          } else {
-            setUser(user);
-          }
+        if (user?.app_metadata.providers.includes("github"));
+        {
+          setConnectedIntegrations(["github"]);
         }
       } catch (error) {
         console.error("Error:", error);
       } finally {
         setLoading(false);
       }
-    };
+    })();
 
-    fetchUser();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
+
+  const fetchUser = async () => {
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Error fetching user details:", error);
+        return;
+      }
+
+      setUser(user);
+      if (user?.app_metadata?.provider === "github") {
+        console.log(
+          "Setting connected integrations",
+          user.app_metadata.provider,
+        );
+        setConnectedIntegrations(["github"]);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("openrouter_model_name", openrouterModelName);
@@ -385,6 +515,10 @@ export default function ChatNav() {
                       >
                         <div className="flex justify-start items-center gap-2">
                           <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={user.user_metadata.avatar_url}
+                              alt={user.email}
+                            />
                             <AvatarFallback className="bg-secondary">
                               {user.email[0]}
                             </AvatarFallback>
@@ -435,8 +569,7 @@ export default function ChatNav() {
                         <span>API keys</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setShowAPIDialog(true)}
-                        disabled
+                        onClick={() => setShowIntegrationsDialog(true)}
                       >
                         <PlugZap className="mr-2 h-4 w-4" />
                         <span>Integrations</span>
@@ -703,6 +836,118 @@ export default function ChatNav() {
           </Dialog>
 
           <Dialog
+            // open={true}
+            open={showIntegrationsDialog}
+            onOpenChange={setShowIntegrationsDialog}
+          >
+            <DialogContent className="max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Integrations</DialogTitle>
+                <DialogDescription>
+                  Connect your accounts and unlock seamless integrations
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="gap-4 mt-4">
+                <div className="space-y-4">
+                  {integrations.map((integration) => (
+                    <Button
+                      key={integration.id}
+                      variant="outline"
+                      className="w-full justify-between h-16 pl-6 pr-4 group"
+                      onClick={integration.handler}
+                      disabled={
+                        oAuthLoading === integration.id ||
+                        connectedIntegrations.includes(integration.id)
+                      }
+                    >
+                      <div className="flex items-center gap-4">
+                        <div>{integration.icon}</div>
+                        <div className="flex flex-col text-left">
+                          <div className="font-medium">{integration.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {integration.description}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {oAuthLoading === integration.id ? (
+                          <div className="flex items-center gap-2 px-4 py-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Connecting...</span>
+                          </div>
+                        ) : connectedIntegrations.includes(integration.id) ? (
+                          <div className="backdrop-blur bg-green-800/20 border-green-800/30 text-green-700 flex items-center gap-2 rounded-md px-4 py-2">
+                            <Check className="h-4 w-4" />
+                            <span className="">Connected</span>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            className="hover:bg-transparent text-muted-foreground group-hover:text-primary"
+                          >
+                            Connect
+                          </Button>
+                        )}
+                      </div>
+                    </Button>
+                  ))}
+                  {oAuthError && (
+                    <Alert className="max-w-lg backdrop-blur bg-rose-800/20 border-rose-800/30 text-rose-700 mx-auto">
+                      <AlertDescription>{oAuthError}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                {/* <Card className="h-full"> */}
+                {/*   <CardHeader> */}
+                {/*     <CardTitle> */}
+                {/*       {providers.find((p) => p.id === selectedProvider)?.name} */}
+                {/*     </CardTitle> */}
+                {/*     <CardDescription> */}
+                {/*       {apiKeys[selectedProvider as keyof typeof apiKeys] */}
+                {/*         ? "API key is saved and encrypted" */}
+                {/*         : "Enter your API key for " + */}
+                {/*           providers.find((p) => p.id === selectedProvider) */}
+                {/*             ?.name} */}
+                {/*     </CardDescription> */}
+                {/*   </CardHeader> */}
+                {/*   <CardContent> */}
+                {/*     <div className="space-y-4"> */}
+                {/*       <Input */}
+                {/*         type="password" */}
+                {/*         placeholder={ */}
+                {/*           providers.find((p) => p.id === selectedProvider) */}
+                {/*             ?.placeholder */}
+                {/*         } */}
+                {/*         value={keyInput} */}
+                {/*         onChange={(e) => */}
+                {/*           handleAPIKeyChange(selectedProvider, e.target.value) */}
+                {/*         } */}
+                {/*         className="w-full" */}
+                {/*       /> */}
+                {/*       {apiKeys[selectedProvider as keyof typeof apiKeys] && ( */}
+                {/*         <Button */}
+                {/*           variant="destructive" */}
+                {/*           className="w-full" */}
+                {/*           onClick={() => deleteAPIKey(selectedProvider)} */}
+                {/*         > */}
+                {/*           Remove API Key */}
+                {/*         </Button> */}
+                {/*       )} */}
+                {/*     </div> */}
+                {/**/}
+                {/*     <p className="text-center text-xs text-muted-foreground mt-6"> */}
+                {/*       Your API keys are encrypted with AES-256 encryption and */}
+                {/*       stored securely to maintain confidentiality and integrity. */}
+                {/*     </p> */}
+                {/*   </CardContent> */}
+                {/* </Card> */}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
             open={showChatSettingsDialog}
             onOpenChange={setShowChatSettingsDialog}
           >
@@ -722,7 +967,7 @@ export default function ChatNav() {
                       variant={
                         selectedProvider === provider.id ? "outline" : "ghost"
                       }
-                      className="w-full justify-between h-16 px-6"
+                      className="w-full justify-between h-16 pl-6 pr-4"
                       onClick={() => setSelectedProvider(provider.id)}
                     >
                       <div className="flex items-center gap-4">

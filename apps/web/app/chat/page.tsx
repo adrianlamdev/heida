@@ -6,6 +6,7 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
+import CommandMenu from "@/components/command-menu";
 import "katex/dist/katex.min.css";
 import {
   X,
@@ -382,8 +383,24 @@ export default function ChatPage() {
   const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
-
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setInput(value);
+
+    if (value == "/") {
+      console.log("show command menu");
+      setShowCommandMenu(true);
+    } else if (!value.startsWith("/")) {
+      setShowCommandMenu(false);
+    }
+  };
+
+  const handleCommandSelect = (command) => {
+    setInput(command.template);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -646,10 +663,15 @@ ${
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 relative">
+                <CommandMenu
+                  isOpen={showCommandMenu}
+                  onSelect={handleCommandSelect}
+                  onClose={() => setShowCommandMenu(false)}
+                />
                 <Input
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -658,8 +680,8 @@ ${
                   }}
                   placeholder={
                     attachedFiles.length > 0
-                      ? "Add a message..."
-                      : "Type a message..."
+                      ? "Ask about files, or use / for commands, @ for presets..."
+                      : "Type / for commands, @ for presets..."
                   }
                   className="shadow-none w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
                 />
