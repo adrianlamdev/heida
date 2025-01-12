@@ -3,36 +3,10 @@
 import { createClient } from "@/utils/supabase/client";
 import { type User } from "@supabase/supabase-js";
 import {
-  Menu,
-  MessageCirclePlus,
-  User as UserIcon,
-  LogOut,
-  Lock,
-  Sun,
-  Key,
-  Globe,
-  HelpCircle,
-  Keyboard,
-  Moon,
-  MoreVertical,
-  Check,
-  ExternalLink,
-  Speech,
-  MessageCircle,
-  Box,
-  Sparkle,
-  Sparkles,
-  PlugZap,
-  Rocket,
-  Settings,
-  Loader2,
-} from "lucide-react";
-import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@workspace/ui/components/avatar";
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 import { Button } from "@workspace/ui/components/button";
 import {
   Card,
@@ -72,6 +46,7 @@ import {
   ExternalLink,
   HelpCircle,
   Key,
+  Loader2,
   Lock,
   LogOut,
   Mail,
