@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@workspace/ui/components/button";
 import ReactConfetti from "react-confetti";
 import { Input } from "@workspace/ui/components/input";
 import { Sparkles, ChevronRight, Loader2 } from "lucide-react";
@@ -17,6 +16,7 @@ import {
 } from "@workspace/ui/components/form";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { motion, AnimatePresence } from "framer-motion";
+import { RainbowButton } from "../rainbow-button";
 
 const formSchema = z.object({
   email: z
@@ -129,7 +129,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative h-screen bg-gradient-to-tr from-background to-secondary/50 flex flex-col items-center justify-center overflow-hidden pb-16 md:pb-24 lg:pb-32">
+    <section className="relative h-screen bg-gradient-to-t from-background to-secondary/50 flex flex-col items-center justify-center overflow-hidden pb-16 md:pb-24 lg:pb-32">
       {showConfetti && (
         <ReactConfetti
           recycle={false}
@@ -203,14 +203,13 @@ export default function HeroSection() {
                             />
                           </motion.div>
                         </FormControl>
-                        <FormMessage className="text-left mt-1 text-sm absolute" />
+                        <FormMessage className="text-left mt-1 text-sm absolute text-rose-700" />
                       </FormItem>
                     )}
                   />
                   <motion.div whileTap={{ scale: 0.98 }}>
-                    <Button
+                    <RainbowButton
                       type="submit"
-                      size="lg"
                       className="h-10 group px-3 w-28 transition-all"
                       disabled={form.formState.isSubmitting}
                     >
@@ -233,7 +232,7 @@ export default function HeroSection() {
                           <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                         </motion.div>
                       )}
-                    </Button>
+                    </RainbowButton>
                   </motion.div>
                 </motion.div>
               </form>

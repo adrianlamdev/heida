@@ -7,10 +7,10 @@ import {
   Bot,
   Wand2,
   MessageSquare,
-  Lock,
-  Map,
-  GitBranch,
-  File,
+  GitFork,
+  Network,
+  Replace,
+  Database,
 } from "lucide-react";
 import {
   Card,
@@ -22,35 +22,35 @@ import {
 export function FeaturesSection() {
   const features = [
     {
-      title: "Secure Conversations",
+      title: "Flexible Conversation Structure",
       description:
-        "End-to-end encryption and secure data storage protect your conversations.",
+        "Branch, merge, and organize your chats like git - fork discussions, explore multiple directions, and maintain a complete history of your thought process.",
       skeleton: <SkeletonThree />,
-      icon: Lock,
+      icon: GitFork,
       className: "col-span-1 lg:col-span-4 border-b lg:border-r",
     },
     {
       title: "Visual Knowledge Maps",
       description:
-        "Watch your conversations transform into interactive knowledge graphs.",
+        "Transform conversations into explorable knowledge graphs, helping you discover connections and insights across all your discussions.",
       skeleton: <SkeletonTwo />,
-      icon: Map,
+      icon: Network,
       className: "border-b col-span-1 lg:col-span-2",
     },
     {
-      title: "Context-Aware Model Switching",
+      title: "Adaptive Model Selection",
       description:
-        "Seamlessly transition between AI models while preserving your entire conversation context. Like having multiple experts in one room, working together.",
+        "Get the right AI expertise at the right time - switch between specialized models while maintaining full conversation context and history.",
       skeleton: <SkeletonOne />,
-      icon: GitBranch,
+      icon: Replace,
       className: "col-span-1 lg:col-span-3 lg:border-r",
     },
     {
-      title: "Instant File Analysis",
+      title: "Personalized Knowledge Base",
       description:
-        "Drop any file - code, PDFs, or documents - and watch as AI instantly understands and references it in your conversations, with smart contextual memory.",
+        "Your conversations automatically build a searchable knowledge repository that learns from your specific domain expertise and questions.",
       skeleton: <SkeletonFour />,
-      icon: File,
+      icon: Database,
       className: "col-span-1 lg:col-span-3 border-b lg:border-none",
     },
   ];

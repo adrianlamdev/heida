@@ -1,6 +1,6 @@
-import { Button } from "@workspace/ui/components/button";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { RainbowButton } from "../rainbow-button";
 
 export default function WaitlistSection() {
   return (
@@ -14,10 +14,10 @@ export default function WaitlistSection() {
           spots available for our private beta.
         </p>
         <Link href="#hero">
-          <Button size="lg" className="h-10 group px-3">
+          <RainbowButton>
             Join Beta
             <ChevronRight className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          </RainbowButton>
         </Link>
       </div>
     </section>
