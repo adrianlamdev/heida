@@ -81,11 +81,4 @@ class Reranker:
 
         rankings.sort(key=lambda x: x["score"], reverse=True)
 
-        logger.info(
-            "Completed reranking",
-            query=query,
-            scores=[result["score"] for result in rankings],
-            chunk_count=len(chunks),
-        )
-
         return rankings

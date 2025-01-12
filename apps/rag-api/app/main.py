@@ -22,6 +22,7 @@ reranker = None
 async def lifespan(app: FastAPI):
     # Initialize on startup
     global document_processor, reranker
+    logger.info("Initializing DocumentProcessor and Reranker module")
     document_processor = DocumentProcessor()
     reranker = Reranker()
     yield

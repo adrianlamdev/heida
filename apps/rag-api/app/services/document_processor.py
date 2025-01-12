@@ -10,6 +10,11 @@ from bs4 import BeautifulSoup, Tag
 from app.core import logger
 from pypdf import PdfReader
 import io
+from pathlib import Path
+import hashlib
+import numpy as np
+import pickle
+
 
 from app.core.config import SUPPORTED_CONTENT_TYPES
 
@@ -44,18 +49,46 @@ class DocumentProcessor:
         model: str = "sentence-transformers/paraphrase-MiniLM-L3-v2",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
+        cache_dir: str = ".cache",
     ):
-        logger.info(
-            "Initializing DocumentProcessor",
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             separators=["\n\n", "\n", ". ", "—", ", ", " ", ""],
         )
         self.model = SentenceTransformer(model)
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+
+    def _get_cache_key(self, file_content: bytes) -> str:
+        """Generate a unique cache key based on file content and processing parameters"""
+        params = f"{self.model.get_sentence_embedding_dimension()}_{self.text_splitter._chunk_size}_{self.text_splitter._chunk_overlap}"
+        return hashlib.sha256(file_content + params.encode()).hexdigest()
+
+    def _load_from_cache(
+        self, cache_key: str
+    ) -> Tuple[list, np.ndarray, BM25Okapi] | None:
+        """Try to load processed data from cache"""
+        try:
+            cache_file = self.cache_dir / f"{cache_key}.pkl"
+            if cache_file.exists():
+                logger.info("Loading from cache", cache_key=cache_key)
+                with cache_file.open("rb") as f:
+                    return pickle.load(f)
+        except Exception as e:
+            logger.warning("Cache load failed", error=str(e))
+        return None
+
+    def _save_to_cache(
+        self, cache_key: str, data: Tuple[list, np.ndarray, BM25Okapi]
+    ) -> None:
+        """Save processed data to cache"""
+        try:
+            cache_file = self.cache_dir / f"{cache_key}.pkl"
+            with cache_file.open("wb") as f:
+                pickle.dump(data, f)
+        except Exception as e:
+            logger.warning("Cache save failed", error=str(e))
 
     def extract_text(self, file_content, content_type: str) -> Tuple[str, Dict]:
         """
@@ -74,7 +107,6 @@ class DocumentProcessor:
         Raises:
             ValueError: If file type is unsupported or processing fails
         """
-        logger.info("Extracting text from file", content_type=content_type)
         if content_type not in SUPPORTED_CONTENT_TYPES:
             logger.error(f"Unsupported file type: {content_type}")
             raise ValueError(f"Unsupported file type: {content_type}")
@@ -120,18 +152,6 @@ class DocumentProcessor:
             )
             raise ValueError(f"Error processing file: {str(e)}")
 
-    # NOTE: Contextual enrichment works but kinda slow/expensive
-    # def create_context(self, chunk):
-    #     prompt = f"""Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.
-    #     Chunk: {chunk}"""
-    #     context_creator = ResponseGenerator()
-    #     completion = context_creator.client.chat.completions.create(
-    #         model="deepseek/deepseek-chat",
-    #         messages=[{"role": "user", "content": prompt}],
-    #     )
-    #     return completion.choices[0].message.content
-    #
-
     def process_documents(self, file_content, content_type: str) -> Tuple:
         """
         Process document and metadata content into chunks with embeddings and BM25 index.
@@ -144,7 +164,12 @@ class DocumentProcessor:
             tuple: Tuple containing chunks, embeddings, and BM25 index
         """
         start = time.time()
-        logger.info("Processing document", content_type=content_type)
+
+        cache_key = self._get_cache_key(file_content)
+        cached_data = self._load_from_cache(cache_key)
+        if cached_data is not None:
+            return cached_data
+
         text, doc_metadata = self.extract_text(file_content, content_type)
         logger.info(f"Text extraction took: {time.time() - start:.2f}s")
 
@@ -169,15 +194,12 @@ class DocumentProcessor:
             )
             chunks.append(chunk)
 
-        logger.info("Generated chunks", chunk_count=len(chunks))
-
         # NOTE: probably move to separate method
         chunk_texts = [chunk.content for chunk in chunks]
 
         embed_start = time.time()
         embeddings = self.model.encode(chunk_texts, normalize_embeddings=True)
         logger.info(f"Embedding generation took: {time.time() - embed_start:.2f}s")
-        logger.info("Generated embeddings", embedding_shape=embeddings.shape)
 
         tokenized_corpus = [word_tokenize(text.lower()) for text in chunk_texts]
 
@@ -192,6 +214,7 @@ class DocumentProcessor:
         bm25 = BM25Okapi(tokenized_corpus)
         logger.info(f"BM25 indexing took: {time.time() - bm25_start:.2f}s")
 
-        logger.info("Document processed", chunk_count=len(chunks))
+        results = (chunks, embeddings, bm25)
+        self._save_to_cache(cache_key, results)
 
         return chunks, embeddings, bm25

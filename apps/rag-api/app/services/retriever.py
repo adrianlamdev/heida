@@ -5,8 +5,8 @@ from nltk.tokenize import word_tokenize
 from rank_bm25 import BM25Okapi
 from app.core import logger
 
-nltk.download("punkt")
-nltk.download("punkt_tab")
+nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 
 
 class Retriever:
@@ -29,7 +29,6 @@ class Retriever:
     """
 
     def __init__(self, model):
-        logger.info("Initializing Retriever")
         self.model = model
         self.query_prefix = "Represent this sentence for searching relevant passages: "
         self.query_prefix_encoding = self.model.encode(
