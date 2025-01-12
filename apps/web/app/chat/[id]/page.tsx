@@ -6,8 +6,8 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
-import CommandMenu from "@/components/command-menu";
 import "katex/dist/katex.min.css";
+import useSWR from "swr";
 import {
   X,
   File,
@@ -24,12 +24,36 @@ import { Card } from "@workspace/ui/components/card";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { TextShimmer } from "@/components/text-shimmer";
+import { useParams } from "next/navigation";
+
+const generateUUID = (): string => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+// TODO: move to utils folder
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch chat data");
+  return res.json();
+};
 
 // TODO: move to types folder
 interface Message {
+  id: string;
+  chat_id: string;
   role: "user" | "assistant";
   content: string;
+  created_at: string;
+  metadata?: {
+    model?: string;
+    features?: {
+      web_search_enabled: boolean;
+    };
+  };
 }
 
 interface CodeBlockProps {
@@ -247,9 +271,7 @@ const StatusMessage = ({ status, visible }: StatusMessageProps) => {
         >
           <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-secondary/70 border backdrop-blur-sm shadow-inner text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <TextShimmer className="font-medium text-sm" duration={1.5}>
-              {message}
-            </TextShimmer>
+            <span className="text-sm font-medium">{message}</span>
           </div>
         </motion.div>
       )}
@@ -371,11 +393,20 @@ const MessageContent = ({ content }: { content: string }) => {
 };
 
 export default function ChatPage() {
+  const params = useParams();
+  const chatId = params.id as string;
+
+  const {
+    data: chatData,
+    isLoading,
+    error,
+    mutate,
+  } = useSWR(chatId ? `/api/v1/chat/${chatId}` : null, fetcher);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>("");
-  const [chatId, setChatId] = useState("");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -383,26 +414,15 @@ export default function ChatPage() {
   const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
-  const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
-
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setInput(value);
-
-    if (value == "/") {
-      console.log("show command menu");
-      setShowCommandMenu(true);
-    } else if (!value.startsWith("/")) {
-      setShowCommandMenu(false);
-    }
-  };
-
-  const handleCommandSelect = (command) => {
-    setInput(command.template);
-  };
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chatData?.messages) {
+      setMessages(chatData.messages);
+      setModel(chatData.model || "");
+    }
+  }, [chatData]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files) return;
@@ -437,14 +457,13 @@ export default function ChatPage() {
     }
   }, [fileAttachmentReset]);
 
-  const handleSubmit = async (
-    e: React.FormEvent | null,
-    recommendedPrompt?: string,
-  ) => {
-    if (e) e.preventDefault();
-    const currentInput = recommendedPrompt || input;
-    if ((!currentInput.trim() && attachedFiles.length === 0) || isLoading)
-      return;
+  useEffect(() => {
+    console.log("Current messages:", messages);
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!input.trim() && attachedFiles.length === 0) || loading) return;
 
     try {
       setIsLoading(true);
@@ -454,24 +473,42 @@ export default function ChatPage() {
       abortControllerRef.current = new AbortController();
 
       const userMessage: Message = {
+        id: generateUUID(),
+        chat_id: chatId,
         role: "user",
-        content: recommendedPrompt || input.trim(),
+        content: input.trim(),
+        created_at: new Date().toISOString(),
+        metadata: {},
       };
+      console.log("Adding user message:", userMessage); // Add this line
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
       resetFileAttachment();
 
       const formData = new FormData();
-      formData.append("chatId", chatId || "");
-      formData.append("messages", JSON.stringify([...messages, userMessage]));
+      formData.append(
+        "messages",
+        JSON.stringify([
+          ...messages,
+          {
+            ...userMessage,
+            id: generateUUID(),
+            chat_id: chatId,
+            role: "user",
+            content: input.trim(),
+            created_at: new Date().toISOString(),
+            metadata: {},
+          },
+        ]),
+      );
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
       attachedFiles.forEach((file, index) => {
         formData.append(`attachments[${index}]`, file);
       });
 
-      const response = await fetch("/api/v1/chat", {
+      const response = await fetch(`/api/v1/chat/${chatId}`, {
         method: "POST",
         body: formData,
         signal: abortControllerRef.current.signal,
@@ -483,7 +520,21 @@ export default function ChatPage() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const initialAssistantMessage: Message = {
+        id: generateUUID(),
+        chat_id: chatId,
+        role: "assistant",
+        content: "",
+        created_at: new Date().toISOString(),
+        metadata: {
+          model,
+          features: {
+            web_search_enabled: webSearchEnabled,
+          },
+        },
+      };
+
+      setMessages((prev) => [...prev, initialAssistantMessage]);
 
       let assistantMessage = "";
 
@@ -499,13 +550,10 @@ export default function ChatPage() {
             const data = JSON.parse(line.slice(6));
 
             if (data.status) {
-              if (data.status === "chat_created" && data.chatId) {
-                setChatId(data.chatId);
-                window.history.replaceState({}, "", `/chat/${data.chatId}`);
-              }
               if (data.status === "completed") {
                 setStatus("");
                 setShowStatus(false);
+                mutate();
                 break;
               }
               setStatus(data.status);
@@ -530,10 +578,19 @@ export default function ChatPage() {
         setMessages((prev) => [
           ...prev,
           {
+            id: generateUUID(),
+            chat_id: chatId,
             role: "assistant",
             content:
               "I apologize, but I encountered an error. Please try again.",
-          },
+            created_at: new Date().toISOString(),
+            metadata: {
+              model,
+              features: {
+                web_search_enabled: webSearchEnabled,
+              },
+            },
+          } as Message,
         ]);
       }
     } finally {
@@ -544,12 +601,13 @@ export default function ChatPage() {
     }
   };
 
-  const recommendedPrompts = [
-    "What can you do?",
-    "Write an email to my students",
-    "Explain [topic] in simple terms.",
-    "Tell me a fun fact!",
-  ];
+  if (isLoading) {
+    return (
+      <div className="w-screen h-screen flex justify-center items-center">
+        <Loader2 className="animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col h-full relative items-center justify-center">
@@ -557,25 +615,11 @@ export default function ChatPage() {
         <div className="h-full flex flex-col">
           <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-28 md:pb-36">
             {messages.length === 0 ? (
-              <div className="h-full w-full flex items-center justify-center flex-col gap-10">
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tight">
-                    Let&apos; get started.
-                  </h2>
-                  <p>How can I help you today?</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 w-full">
-                  {recommendedPrompts.map((prompt, i) => (
-                    <Button
-                      key={i}
-                      variant="secondary"
-                      className="w-full h-20 bg-secondary/60 border shadow-inner"
-                      onClick={() => handleSubmit(null, prompt)}
-                    >
-                      {prompt}
-                    </Button>
-                  ))}
-                </div>
+              <div className="h-full w-full flex items-center justify-center flex-col gap-2">
+                <h2 className="text-3xl font-bold tracking-tight">
+                  Let&apos; get started.
+                </h2>
+                <p>How can I help you today?</p>
               </div>
             ) : (
               <AnimatePresence mode="popLayout">
@@ -689,15 +733,10 @@ ${
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0 relative">
-                <CommandMenu
-                  isOpen={showCommandMenu}
-                  onSelect={handleCommandSelect}
-                  onClose={() => setShowCommandMenu(false)}
-                />
+              <div className="flex-1 min-w-0">
                 <Input
                   value={input}
-                  onChange={handleInputChange}
+                  onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -706,8 +745,8 @@ ${
                   }}
                   placeholder={
                     attachedFiles.length > 0
-                      ? "Ask about files, or use / for commands, @ for presets..."
-                      : "Type / for commands, @ for presets..."
+                      ? "Add a message..."
+                      : "Type a message..."
                   }
                   className="shadow-none w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
                 />
@@ -715,7 +754,7 @@ ${
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={isLoading ? "loading" : "idle"}
+                key={loading ? "loading" : "idle"}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
@@ -727,11 +766,11 @@ ${
                   size="icon"
                   className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
-                    !isLoading && !input.trim() && attachedFiles.length === 0
+                    !loading && !input.trim() && attachedFiles.length === 0
                   }
                   onClick={(e) => {
                     e.preventDefault();
-                    if (isLoading) {
+                    if (loading) {
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         setIsLoading(false);
@@ -743,7 +782,7 @@ ${
                     }
                   }}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <ArrowUp className="h-5 w-5" />
