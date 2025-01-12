@@ -437,9 +437,14 @@ export default function ChatPage() {
     }
   }, [fileAttachmentReset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if ((!input.trim() && attachedFiles.length === 0) || isLoading) return;
+  const handleSubmit = async (
+    e: React.FormEvent | null,
+    recommendedPrompt?: string,
+  ) => {
+    if (e) e.preventDefault();
+    const currentInput = recommendedPrompt || input;
+    if ((!currentInput.trim() && attachedFiles.length === 0) || isLoading)
+      return;
 
     try {
       setIsLoading(true);
@@ -450,7 +455,7 @@ export default function ChatPage() {
 
       const userMessage: Message = {
         role: "user",
-        content: input.trim(),
+        content: recommendedPrompt || input.trim(),
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -539,17 +544,38 @@ export default function ChatPage() {
     }
   };
 
+  const recommendedPrompts = [
+    "What can you do?",
+    "Write an email to my students",
+    "Explain [topic] in simple terms.",
+    "Tell me a fun fact!",
+  ];
+
   return (
     <main className="flex flex-col h-full relative items-center justify-center">
       <div className="flex-1 overflow-y-auto w-full">
         <div className="h-full flex flex-col">
           <div className="max-w-3xl mx-auto w-full px-4 flex-1 pb-28 md:pb-36">
             {messages.length === 0 ? (
-              <div className="h-full w-full flex items-center justify-center flex-col gap-2">
-                <h2 className="text-3xl font-bold tracking-tight">
-                  Let&apos; get started.
-                </h2>
-                <p>How can I help you today?</p>
+              <div className="h-full w-full flex items-center justify-center flex-col gap-10">
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight">
+                    Let&apos; get started.
+                  </h2>
+                  <p>How can I help you today?</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  {recommendedPrompts.map((prompt, i) => (
+                    <Button
+                      key={i}
+                      variant="secondary"
+                      className="w-full h-20 bg-secondary/60 border shadow-inner"
+                      onClick={() => handleSubmit(null, prompt)}
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
+                </div>
               </div>
             ) : (
               <AnimatePresence mode="popLayout">
