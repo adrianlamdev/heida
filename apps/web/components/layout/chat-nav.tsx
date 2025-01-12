@@ -7,6 +7,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@workspace/ui/components/avatar";
+import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { Button } from "@workspace/ui/components/button";
 import {
   Card,
@@ -64,6 +65,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { workerData } from "worker_threads";
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -459,24 +461,27 @@ export default function ChatNav() {
                       Loading chats...
                     </div>
                   )}
-                  {chatsData?.map((chat) => (
-                    <Button
-                      key={chat.id}
-                      variant="ghost"
-                      className="flex items-center justify-between w-full px-4 py-2 text-left hover:bg-secondary h-14"
-                      asChild
-                      onClick={() => setSheetOpen(false)}
-                    >
-                      <Link href={`/chat/${chat.id}`}>
-                        <div className="flex items-center space-x-2">
-                          <span>{chat.title}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(chat.created_at).toLocaleDateString()}
-                        </div>
-                      </Link>
-                    </Button>
-                  ))}
+
+                  <ScrollArea className="h-[72dvh]">
+                    {chatsData?.map((chat) => (
+                      <Button
+                        key={chat.id}
+                        variant="ghost"
+                        className="flex items-center justify-between w-full px-4 py-2 text-left hover:bg-secondary h-14"
+                        asChild
+                        onClick={() => setSheetOpen(false)}
+                      >
+                        <Link href={`/chat/${chat.id}`}>
+                          <div className="flex items-center space-x-2">
+                            <span>{chat.title}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(chat.created_at).toLocaleDateString()}
+                          </div>
+                        </Link>
+                      </Button>
+                    ))}
+                  </ScrollArea>
                 </div>
               </div>
 
