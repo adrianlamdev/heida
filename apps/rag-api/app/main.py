@@ -2,18 +2,34 @@ from typing import Dict
 
 from starlette.responses import StreamingResponse
 import uvicorn
-from duckduckgo_search import DDGS  # NOTE: probably remove to switch to brave
 from langchain_community.document_loaders import BraveSearchLoader
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 import json
-
+from contextlib import asynccontextmanager
 from app.core import SUPPORTED_CONTENT_TYPES, logger
 from app.services import DocumentProcessor, Reranker, Retriever
 from app.services.web_fetcher import WebFetcher
 from dotenv import load_dotenv
 import os
+import time
+from functools import lru_cache
 
-app = FastAPI()
+document_processor = None
+reranker = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize on startup
+    global document_processor, reranker
+    document_processor = DocumentProcessor()
+    reranker = Reranker()
+    yield
+    document_processor = None
+    reranker = None
+
+
+app = FastAPI(lifespan=lifespan)
 
 # TODO: Other features to consider:
 # - GitHub repo integration
@@ -33,6 +49,7 @@ async def search_documents(query: str) -> StreamingResponse:
     Raises:
         HTTPException: If query is empty or if an error occurs
     """
+    global document_processor, reranker
     if not query or query.isspace():
         logger.warning("Empty query")
         raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -46,6 +63,7 @@ async def search_documents(query: str) -> StreamingResponse:
             raise HTTPException(
                 status_code=500, detail="Missing Brave API key in environment"
             )
+
         async def event_generator():
             try:
                 yield f"data: {json.dumps({'status': 'searching'})}\n\n"
@@ -61,6 +79,7 @@ async def search_documents(query: str) -> StreamingResponse:
                 urls = []
                 url_metadata = {}
 
+                # FIXME: meteadata not attached/used
                 for i, result in enumerate(raw_results):
                     url = result.metadata["link"]
                     urls.append(url)
@@ -93,13 +112,12 @@ async def search_documents(query: str) -> StreamingResponse:
 
                 yield f"data: {json.dumps({'status': 'running_rag'})}\n\n"
 
-                processor = DocumentProcessor()
-                chunks, embeddings, bm25 = processor.process_documents(
+                chunks, embeddings, bm25 = document_processor.process_documents(
                     combined_content.encode("utf-8"),
                     content_type="text/plain",
                 )
 
-                retriever = Retriever(processor.model)
+                retriever = Retriever(document_processor.model)
                 results = retriever.retrieve(
                     query=query,
                     chunks=chunks,
@@ -108,7 +126,6 @@ async def search_documents(query: str) -> StreamingResponse:
                     top_k=3,
                 )
 
-                reranker = Reranker()
                 reranked_results = reranker.rerank(
                     query, [result["chunk"] for result in results]
                 )
@@ -168,6 +185,10 @@ async def retrieve(
         "Received retrieval request",
         file_type=file.content_type,
     )
+    global document_processor, reranker
+
+    timings = {}
+    total_start = time.perf_counter()
 
     if not query or query.isspace():
         logger.warning("Empty query")
@@ -183,38 +204,46 @@ async def retrieve(
         )
 
     try:
+        file_read_start = time.perf_counter()
         file_content = await file.read()
+        timings["file_read"] = time.perf_counter() - file_read_start
         logger.info("File read successfully", content_length=len(file_content))
 
-        processor = DocumentProcessor()
-        chunks, embeddings, bm25 = processor.process_documents(
+        processing_start = time.perf_counter()
+        chunks, embeddings, bm25 = document_processor.process_documents(
             file_content, file.content_type
         )
+        timings["document_processing"] = time.perf_counter() - processing_start
 
-        retriever = Retriever(processor.model)
+        retrieval_start = time.perf_counter()
+        retriever = Retriever(document_processor.model)
         results = retriever.retrieve(
             query=query, chunks=chunks, embeddings=embeddings, bm25=bm25
         )
+        timings["retrieval"] = time.perf_counter() - retrieval_start
 
-        reranker = Reranker()
+        rerank_start = time.perf_counter()
         reranked_results = reranker.rerank(
             query, [result["chunk"] for result in results]
         )
+        timings["reranking"] = time.perf_counter() - rerank_start
 
-        search_results = []
-        for result in reranked_results:
-            search_results.append(
-                {
-                    "content": result["chunk"].content,
-                    "metadata": result["chunk"].metadata,
-                    "score": result.get("score", 0),
-                }
-            )
+        search_results = [
+            {
+                "content": result["chunk"].content,
+                "metadata": result["chunk"].metadata,
+                "score": result.get("score", 0),
+            }
+            for result in reranked_results
+        ]
+
+        total_time = time.perf_counter() - total_start
 
         return {
             "query": query,
             "results": search_results,
             "count": len(search_results),
+            "timings": {"total": total_time, **timings},
         }
 
     except Exception as e:

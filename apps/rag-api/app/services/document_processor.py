@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import time
 from typing import Dict, Tuple
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
@@ -33,14 +34,14 @@ class DocumentProcessor:
 
     Attributes:
         text_splitter: RecursiveCharacterTextSplitter for document chunking
-        model: SentenceTransformer model for computing embeddings (default: BAAI/bge-base-en-v1.5)
+        model: SentenceTransformer model for computing embeddings (default: paraphrase-MiniLM-L3-v2)
         chunk_size (int): Size of text chunks (default: 500)
         chunk_overlap (int): Overlap between chunks (default: 50)
     """
 
     def __init__(
         self,
-        model: str = "BAAI/bge-base-en-v1.5",
+        model: str = "sentence-transformers/paraphrase-MiniLM-L3-v2",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
     ):
@@ -131,7 +132,7 @@ class DocumentProcessor:
     #     return completion.choices[0].message.content
     #
 
-    def process_documents(self, file_content, content_type: str) -> tuple:
+    def process_documents(self, file_content, content_type: str) -> Tuple:
         """
         Process document and metadata content into chunks with embeddings and BM25 index.
 
@@ -142,14 +143,14 @@ class DocumentProcessor:
         Returns:
             tuple: Tuple containing chunks, embeddings, and BM25 index
         """
+        start = time.time()
         logger.info("Processing document", content_type=content_type)
         text, doc_metadata = self.extract_text(file_content, content_type)
-        raw_chunks = self.text_splitter.split_text(text)
+        logger.info(f"Text extraction took: {time.time() - start:.2f}s")
 
-        # NOTE: Contextual enrichment
-        # for i, chunk in enumerate(chunks):
-        #    context = self.create_context(chunk)
-        #    chunks[i] = f"{context}; {chunk}"
+        chunk_start = time.time()
+        raw_chunks = self.text_splitter.split_text(text)
+        logger.info(f"Chunking took: {time.time() - chunk_start:.2f}s")
 
         if not raw_chunks:
             logger.error("No chunks generated from document")
@@ -172,12 +173,24 @@ class DocumentProcessor:
 
         # NOTE: probably move to separate method
         chunk_texts = [chunk.content for chunk in chunks]
+
+        embed_start = time.time()
         embeddings = self.model.encode(chunk_texts, normalize_embeddings=True)
+        logger.info(f"Embedding generation took: {time.time() - embed_start:.2f}s")
         logger.info("Generated embeddings", embedding_shape=embeddings.shape)
 
         tokenized_corpus = [word_tokenize(text.lower()) for text in chunk_texts]
+
+        # TODO: adapative BM25 indexing based on chunk count
+        # if len(chunks) > 10:
+        #     tokenized_corpus = [word_tokenize(text.lower()) for text in chunk_texts]
+        #     bm25 = BM25Okapi(tokenized_corpus)
+        # else:
+        #     bm25 = None
+
+        bm25_start = time.time()
         bm25 = BM25Okapi(tokenized_corpus)
-        logger.info("Created BM25 index")
+        logger.info(f"BM25 indexing took: {time.time() - bm25_start:.2f}s")
 
         logger.info("Document processed", chunk_count=len(chunks))
 

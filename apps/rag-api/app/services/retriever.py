@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 import numpy as np
 import nltk
 from nltk.tokenize import word_tokenize
@@ -31,6 +31,10 @@ class Retriever:
     def __init__(self, model):
         logger.info("Initializing Retriever")
         self.model = model
+        self.query_prefix = "Represent this sentence for searching relevant passages: "
+        self.query_prefix_encoding = self.model.encode(
+            self.query_prefix, normalize_embeddings=True
+        )
 
     # NOTE: For token counting (in development)
     # self.token_counter = TokenCounter()
@@ -45,7 +49,7 @@ class Retriever:
         query: str,
         chunks: List[int],
         embeddings,
-        bm25: BM25Okapi,
+        bm25: BM25Okapi | None,
         top_k: int = 10,
     ) -> List[dict]:
         """
@@ -138,12 +142,7 @@ class Retriever:
         Returns:
             List of tuples (doc_id, similarity_score) for top k matches
         """
-
-        query_embedding = self.model.encode(
-            f"Represent this sentence for searching relevant passages: {query}",
-            normalize_embeddings=True,
-        )
-        similarities = query_embedding @ embeddings.T
+        similarities = self.query_prefix_encoding @ embeddings.T
         top_indices = np.argpartition(similarities, -top_k)[-top_k:]
         return [(idx, float(similarities[idx])) for idx in top_indices]
 
