@@ -23,6 +23,7 @@ import { Card } from "@workspace/ui/components/card";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TextShimmer } from "@/components/text-shimmer";
 
 // TODO: move to types folder
 interface Message {
@@ -245,7 +246,9 @@ const StatusMessage = ({ status, visible }: StatusMessageProps) => {
         >
           <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-secondary/70 border backdrop-blur-sm shadow-inner text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm font-medium">{message}</span>
+            <TextShimmer className="font-medium text-sm" duration={1.5}>
+              {message}
+            </TextShimmer>
           </div>
         </motion.div>
       )}

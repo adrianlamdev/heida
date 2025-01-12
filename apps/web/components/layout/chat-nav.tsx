@@ -478,9 +478,11 @@ export default function ChatNav() {
 
                     <DropdownMenuSeparator />
 
-                    <DropdownMenuItem onClick={handleSignOut}>
-                      <Rocket className="mr-2 h-4 w-4" />
-                      <span>Release notes</span>
+                    <DropdownMenuItem asChild>
+                      <Link href="/release-notes">
+                        <Rocket className="mr-2 h-4 w-4" />
+                        <span>Release notes</span>
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-red-700 focus:text-red-700"
