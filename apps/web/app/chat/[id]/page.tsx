@@ -38,7 +38,6 @@ const fetcher = async (url: string) => {
 
 // TODO: move to types folder
 interface Message {
-  id: string;
   chat_id: string;
   role: "user" | "assistant";
   content: string;
@@ -400,7 +399,7 @@ export default function ChatPage() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [model, setModel] = useState<string>("");
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -443,14 +442,13 @@ export default function ChatPage() {
     if ((!input.trim() && chatFiles.length === 0) || loading) return;
 
     try {
-      setIsLoading(true);
+      setLoading(true);
       setShowStatus(true);
       setStatus("");
 
       abortControllerRef.current = new AbortController();
 
       const userMessage: Message = {
-        id: uuidv4(),
         chat_id: chatId,
         role: "user",
         content: input.trim(),
@@ -468,7 +466,6 @@ export default function ChatPage() {
           ...messages,
           {
             ...userMessage,
-            id: uuidv4(),
             chat_id: chatId,
             role: "user",
             content: input.trim(),
@@ -500,7 +497,6 @@ export default function ChatPage() {
       const decoder = new TextDecoder();
 
       const initialAssistantMessage: Message = {
-        id: uuidv4(),
         chat_id: chatId,
         role: "assistant",
         content: "",
@@ -573,7 +569,7 @@ export default function ChatPage() {
         ]);
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
       setStatus("");
       setShowStatus(false);
       abortControllerRef.current = null;
@@ -697,7 +693,7 @@ ${
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={isLoading ? "loading" : "idle"}
+                key={loading ? "loading" : "idle"}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
@@ -714,10 +710,10 @@ ${
                   }
                   onClick={(e) => {
                     e.preventDefault();
-                    if (isLoading) {
+                    if (loading) {
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
-                        setIsLoading(false);
+                        setLoading(false);
                         setStatus("");
                         setShowStatus(false);
                       }
@@ -726,7 +722,7 @@ ${
                     }
                   }}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <ArrowUp className="h-5 w-5" />
