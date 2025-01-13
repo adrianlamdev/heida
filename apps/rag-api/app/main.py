@@ -179,11 +179,7 @@ async def search_documents(query: str) -> StreamingResponse:
 
 
 @app.post("/api/v1/retrieve")
-async def retrieve(
-    query: str = Form(..., min_length=1),
-    user_id: str = Form(..., min_lenght=1),
-    file_id: str = Form(..., min_length=1),
-) -> Dict:
+async def retrieve(payload: dict) -> Dict:
     """
     Endpoint to perform document retrieval based on a query and uploaded file.
 
@@ -198,6 +194,10 @@ async def retrieve(
         HTTPException: If file type is unsupported or processing fails
     """
     # FIXME: ADD USER_ID TO VERIFY USER_ID
+    print(payload)
+    query = payload["query"]
+    user_id = payload["user_id"]
+    file_id = payload["file_id"]
     response = supabase.table("chat_files").select("*").execute()
     file_data = response.data[0]
 

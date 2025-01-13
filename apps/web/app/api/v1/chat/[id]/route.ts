@@ -211,12 +211,46 @@ export async function POST(
       throw userMessageError;
     }
 
+    const fileIds = JSON.parse((formData.get("fileIds") as string) || "[]");
     const messages = JSON.parse(formData.get("messages") as string) || [];
     const model = (formData.get("model") as string) || "deepseek/deepseek-chat";
     const webSearchEnabled = formData.get("webSearchEnabled") === "true";
     const cotEnabled = formData.get("cotEnabled") === "true";
 
     const RAG_API_URL = process.env.RAG_API_URL || "http://localhost:8000";
+
+    let retrievalResults = null;
+
+    if (fileIds.length > 0) {
+      const originalQuery = messages[messages.length - 1]?.content;
+      const optimizedQuery = await rewriteSearchQuery(originalQuery, openai);
+
+      try {
+        const retrievalResponse = await fetch(
+          `${RAG_API_URL}/api/v1/retrieve`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: optimizedQuery,
+              user_id: user.id,
+              file_id: fileIds[0],
+            }),
+          },
+        );
+
+        if (!retrievalResponse.ok) {
+          throw new Error(`Retrieve failed: ${retrievalResponse.statusText}`);
+        }
+
+        retrievalResults = await retrievalResponse.json();
+      } catch (error) {
+        console.error("Retrieval search error:", error);
+      }
+    }
+
     let searchResults = null;
 
     // Handle web search if enabled
@@ -257,6 +291,19 @@ export async function POST(
           .join("\n")}`,
       };
       finalMessages.push(searchContext);
+    }
+
+    if (retrievalResults?.results) {
+      const retrievalContext = {
+        role: "system",
+        content: `Here are relevant retrieval results to help answer the query:\n\n${retrievalResults.results
+          .map(
+            (result: any) =>
+              `Source: ${result.metadata.url}\n${result.content}\n---\n`,
+          )
+          .join("\n")}`,
+      };
+      finalMessages.push(retrievalContext);
     }
 
     // Add CoT system message if enabled
@@ -314,7 +361,7 @@ Format ALL responses using this exact structure:
         try {
           const response = await openai.chat.completions.create({
             model: model,
-            messages: messages,
+            messages: finalMessages,
             stream: true,
           });
 
