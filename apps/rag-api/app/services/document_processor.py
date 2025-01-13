@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from sys import path
 import time
 from typing import Dict, Tuple
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -7,6 +8,7 @@ from rank_bm25 import BM25Okapi
 from nltk.tokenize import word_tokenize
 import json
 from bs4 import BeautifulSoup, Tag
+from supabase import Client
 from app.core import logger
 from pypdf import PdfReader
 import io
@@ -14,6 +16,7 @@ from pathlib import Path
 import hashlib
 import numpy as np
 import pickle
+import json
 
 
 from app.core.config import SUPPORTED_CONTENT_TYPES
@@ -46,6 +49,7 @@ class DocumentProcessor:
 
     def __init__(
         self,
+        supabase: Client | None = None,
         model: str = "sentence-transformers/paraphrase-MiniLM-L3-v2",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
@@ -57,38 +61,135 @@ class DocumentProcessor:
             separators=["\n\n", "\n", ". ", "—", ", ", " ", ""],
         )
         self.model = SentenceTransformer(model)
-        self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
+        self.supabase = supabase
+        if not supabase:
+            self.cache_dir = Path(cache_dir)
+            self.cache_dir.mkdir(exist_ok=True)
 
-    def _get_cache_key(self, file_content: bytes) -> str:
-        """Generate a unique cache key based on file content and processing parameters"""
-        params = f"{self.model.get_sentence_embedding_dimension()}_{self.text_splitter._chunk_size}_{self.text_splitter._chunk_overlap}"
-        return hashlib.sha256(file_content + params.encode()).hexdigest()
-
-    def _load_from_cache(
-        self, cache_key: str
-    ) -> Tuple[list, np.ndarray, BM25Okapi] | None:
-        """Try to load processed data from cache"""
-        try:
-            cache_file = self.cache_dir / f"{cache_key}.pkl"
-            if cache_file.exists():
-                logger.info("Loading from cache", cache_key=cache_key)
-                with cache_file.open("rb") as f:
-                    return pickle.load(f)
-        except Exception as e:
-            logger.warning("Cache load failed", error=str(e))
-        return None
-
-    def _save_to_cache(
-        self, cache_key: str, data: Tuple[list, np.ndarray, BM25Okapi]
-    ) -> None:
-        """Save processed data to cache"""
-        try:
-            cache_file = self.cache_dir / f"{cache_key}.pkl"
-            with cache_file.open("wb") as f:
-                pickle.dump(data, f)
-        except Exception as e:
-            logger.warning("Cache save failed", error=str(e))
+    # WARN: Remove cache operations since we're going to pre-computing embeddings
+    # def _get_user_cache_path(self, user_id: str) -> Path:
+    #     """Generate user-specific cache directory path"""
+    #     if not user_id:
+    #         raise ValueError("user_id is required for cache operations")
+    #     return Path(f"{user_id}/.rag-cache")
+    #
+    # def _get_cache_key(self, file_content: bytes) -> str:
+    #     """Generate a unique cache key based on file content and processing parameters"""
+    #     params = f"{self.model.get_sentence_embedding_dimension()}_{self.text_splitter._chunk_size}_{self.text_splitter._chunk_overlap}"
+    #     return hashlib.sha256(file_content + params.encode()).hexdigest()
+    #
+    # async def _load_from_cache(
+    #     self, cache_key: str, user_id: str
+    # ) -> Tuple[list, np.ndarray, BM25Okapi] | None:
+    #     """Try to load processed data from cache"""
+    #     try:
+    #         if self.supabase:
+    #             if not user_id:
+    #                 logger.warning("No user_id provided for Supabase cache")
+    #                 return None
+    #
+    #             cache_path = f"{user_id}/.rag-cache/{cache_key}.pkl"
+    #             try:
+    #                 data = self.supabase.storage.from_("user-uploads").download(
+    #                     cache_path
+    #                 )
+    #                 if data:
+    #                     logger.info(
+    #                         "Loading from cache", cache_key=cache_key, user_id=user_id
+    #                     )
+    #                     return pickle.loads(data)
+    #             except Exception as e:
+    #                 if "not_found" in str(e):
+    #                     logger.info(
+    #                         "Cache miss - file not found",
+    #                         cache_key=cache_key,
+    #                         user_id=user_id,
+    #                     )
+    #                     return None
+    #                 logger.error("Cache load error", error=str(e))
+    #                 raise e
+    #         else:
+    #             user_cache_dir = self.cache_dir / self._get_user_cache_path(user_id)
+    #             cache_file = user_cache_dir / f"{cache_key}.pkl"
+    #             if cache_file.exists():
+    #                 logger.info(
+    #                     "Loading from cache", cache_key=cache_key, user_id=user_id
+    #                 )
+    #                 with cache_file.open("rb") as f:
+    #                     return pickle.load(f)
+    #             else:
+    #                 logger.info(
+    #                     "Cache miss - file not found",
+    #                     cache_key=cache_key,
+    #                     user_id=user_id,
+    #                 )
+    #
+    #     except Exception as e:
+    #         logger.warning("Cache load failed", error=str(e), user_id=user_id)
+    #     return None
+    #
+    # async def _save_to_cache(
+    #     self,
+    #     cache_key: str,
+    #     user_id: str,
+    #     data: Tuple[list, np.ndarray, BM25Okapi],
+    # ) -> None:
+    #     """Save processed data to user-specific cache"""
+    #     try:
+    #         if self.supabase:
+    #             if not user_id:
+    #                 logger.warning("No user_id provided for Supabase cache")
+    #                 return
+    #
+    #             keep_path = f"{user_id}/.rag-cache/.keep"
+    #
+    #             try:
+    #                 self.supabase.storage.from_("user-uploads").upload(
+    #                     file=b"", path=keep_path, file_options={"cache-control": "3600"}
+    #                 )
+    #                 # self.supabase.storage.from_("user-uploads").update(
+    #                 #     file=b"",
+    #                 #     path=keep_path,
+    #                 #     file_options={"cache-control": "3600", "upsert": "true"},
+    #                 # )
+    #             except Exception as e:
+    #                 if "not_found" in str(e):
+    #                     logger.warning(
+    #                         f"Failed to create .rag-cache directory: {str(e)}"
+    #                     )
+    #                 elif "conflict" in str(e):
+    #                     logger.warning(f".rag-cache directory already exists: {str(e)}")
+    #
+    #             cache_path = f"{user_id}/.rag-cache/{cache_key}.pkl"
+    #             serialized_data = pickle.dumps(data)
+    #
+    #             try:
+    #                 self.supabase.storage.from_("user-uploads").upload(
+    #                     file=serialized_data,
+    #                     path=cache_path,
+    #                     file_options={"cache-control": "3600"},
+    #                 )
+    #             except Exception as e:
+    #                 if "not_found" in str(e):
+    #                     logger.warning(f"Failed to upload cache: {str(e)}")
+    #                 elif "conflict" in str(e):
+    #                     logger.warning(f"Cache already exists: {str(e)}")
+    #
+    #         else:
+    #             user_cache_dir = self.cache_dir / self._get_user_cache_path(user_id)
+    #             user_cache_dir.mkdir(parents=True, exist_ok=True)
+    #             cache_file = user_cache_dir / f"{cache_key}.pkl"
+    #             with cache_file.open("wb") as f:
+    #                 pickle.dump(data, f)
+    #
+    #         logger.info(
+    #             "Cache saved successfully", user_id=user_id, cache_key=cache_key
+    #         )
+    #
+    #     except Exception as e:
+    #         logger.warning(
+    #             "Cache save failed", error=str(e), user_id=user_id, cache_key=cache_key
+    #         )
 
     def extract_text(self, file_content, content_type: str) -> Tuple[str, Dict]:
         """
@@ -152,8 +253,10 @@ class DocumentProcessor:
             )
             raise ValueError(f"Error processing file: {str(e)}")
 
-    def process_documents(self, file_content, content_type: str) -> Tuple:
-        """
+    async def process_documents(
+        self, user_id: str, file_content, content_type: str
+    ) -> Tuple:
+        """_
         Process document and metadata content into chunks with embeddings and BM25 index.
 
         Args:
@@ -165,10 +268,12 @@ class DocumentProcessor:
         """
         start = time.time()
 
-        cache_key = self._get_cache_key(file_content)
-        cached_data = self._load_from_cache(cache_key)
-        if cached_data is not None:
-            return cached_data
+        # cache_key = self._get_cache_key(file_content)
+        # cached_data = await self._load_from_cache(cache_key, user_id)
+        # if cached_data is not None:
+        #     return cached_data
+
+        # file_embeddings = self.supabase.table("chat_files").select("embedding").execute()
 
         text, doc_metadata = self.extract_text(file_content, content_type)
         logger.info(f"Text extraction took: {time.time() - start:.2f}s")
@@ -199,6 +304,11 @@ class DocumentProcessor:
 
         embed_start = time.time()
         embeddings = self.model.encode(chunk_texts, normalize_embeddings=True)
+
+        # TODO: save embeddings to Supabase for retrieval (pre-compute)
+        # self.supabase.table("chat_files").insert(
+        #     {"embedding": json.dumps(embeddings.tolist())}
+        # ).execute()
         logger.info(f"Embedding generation took: {time.time() - embed_start:.2f}s")
 
         tokenized_corpus = [word_tokenize(text.lower()) for text in chunk_texts]
@@ -215,6 +325,6 @@ class DocumentProcessor:
         logger.info(f"BM25 indexing took: {time.time() - bm25_start:.2f}s")
 
         results = (chunks, embeddings, bm25)
-        self._save_to_cache(cache_key, results)
+        # await self._save_to_cache(cache_key, user_id, results)
 
         return chunks, embeddings, bm25

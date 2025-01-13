@@ -3,7 +3,7 @@ from typing import Dict
 from starlette.responses import StreamingResponse
 import uvicorn
 from langchain_community.document_loaders import BraveSearchLoader
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import HTTPException, FastAPI
 import json
 from contextlib import asynccontextmanager
 from app.core import SUPPORTED_CONTENT_TYPES, logger
@@ -12,33 +12,33 @@ from app.services.web_fetcher import WebFetcher
 from dotenv import load_dotenv
 import os
 import time
-from functools import lru_cache
-import os
 from supabase import create_client, Client
-from dotenv import load_dotenv
 
-load_dotenv()
-
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
-
-
-document_processor = None
-reranker = None
-
-# NOTE: instead of using local dir as cache maybe use supabase storage?
+supabase: Client | None = None
+document_processor: DocumentProcessor | None = None
+reranker: Reranker | None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize on startup
-    global document_processor, reranker
-    logger.info("Initializing DocumentProcessor and Reranker module")
-    document_processor = DocumentProcessor()
+    global document_processor, reranker, supabase
+
+    load_dotenv()
+
+    url: str | None = os.environ.get("SUPABASE_URL")
+    key: str | None = os.environ.get("SUPABASE_KEY")
+
+    if not url or not key:
+        raise ValueError("Missing Supabase URL or key in environment")
+
+    logger.info("Initializing DocumentProcessor, Supabase, and Reranker module")
+    supabase = create_client(url, key)
+    document_processor = DocumentProcessor(supabase)
     reranker = Reranker()
 
     yield
+    supabase = None
     document_processor = None
     reranker = None
 
@@ -193,11 +193,12 @@ async def retrieve(payload: dict) -> Dict:
     Raises:
         HTTPException: If file type is unsupported or processing fails
     """
-    # FIXME: ADD USER_ID TO VERIFY USER_ID
-    print(payload)
+
+    global document_processor, reranker, supabase
     query = payload["query"]
     user_id = payload["user_id"]
     file_id = payload["file_id"]
+
     response = supabase.table("chat_files").select("*").execute()
     file_data = response.data[0]
 
@@ -207,7 +208,6 @@ async def retrieve(payload: dict) -> Dict:
         "Received retrieval request",
         file_type=file_data["file_type"],
     )
-    global document_processor, reranker
 
     timings = {}
     total_start = time.perf_counter()
@@ -227,8 +227,8 @@ async def retrieve(payload: dict) -> Dict:
 
     try:
         processing_start = time.perf_counter()
-        chunks, embeddings, bm25 = document_processor.process_documents(
-            file, file_data["file_type"]
+        chunks, embeddings, bm25 = await document_processor.process_documents(
+            user_id, file, file_data["file_type"]
         )
         timings["document_processing"] = time.perf_counter() - processing_start
 
