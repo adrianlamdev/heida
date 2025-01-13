@@ -1,12 +1,11 @@
 "use client";
 
-import { Card, CardTitle, CardDescription } from "@/components/feature-card";
+import { Card } from "@/components/feature-card";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@workspace/ui/components/button";
-import { CardHeader, CardContent } from "@workspace/ui/components/card";
+import { CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
-import { UserIcon, Mail, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function AccountSettingsPage() {
