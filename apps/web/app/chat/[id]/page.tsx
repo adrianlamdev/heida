@@ -27,14 +27,7 @@ import remarkGfm from "remark-gfm";
 import { useParams } from "next/navigation";
 import CommandMenu from "@/components/command-menu";
 import FileUploadHandler from "@/components/file-upload-handler";
-
-const generateUUID = (): string => {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
+import { v4 as uuidv4 } from "uuid";
 
 // TODO: move to utils folder
 const fetcher = async (url: string) => {
@@ -457,7 +450,7 @@ export default function ChatPage() {
       abortControllerRef.current = new AbortController();
 
       const userMessage: Message = {
-        id: generateUUID(),
+        id: uuidv4(),
         chat_id: chatId,
         role: "user",
         content: input.trim(),
@@ -475,7 +468,7 @@ export default function ChatPage() {
           ...messages,
           {
             ...userMessage,
-            id: generateUUID(),
+            id: uuidv4(),
             chat_id: chatId,
             role: "user",
             content: input.trim(),
@@ -507,7 +500,7 @@ export default function ChatPage() {
       const decoder = new TextDecoder();
 
       const initialAssistantMessage: Message = {
-        id: generateUUID(),
+        id: uuidv4(),
         chat_id: chatId,
         role: "assistant",
         content: "",
@@ -564,7 +557,7 @@ export default function ChatPage() {
         setMessages((prev) => [
           ...prev,
           {
-            id: generateUUID(),
+            id: uuidv4(),
             chat_id: chatId,
             role: "assistant",
             content:

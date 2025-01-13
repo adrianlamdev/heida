@@ -112,8 +112,9 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
+    const title = formData.get("title") as string;
     const chatId = formData.get("chatId") as string;
-    let currentChatId = chatId;
+    const currentChatId = chatId;
 
     const supabase = await createClient();
 
@@ -153,12 +154,13 @@ export async function POST(req: NextRequest) {
 
     const messages = JSON.parse(formData.get("messages") as string) || [];
 
-    if (!currentChatId) {
+    if (!title) {
       const title = await generateTitle(messages[0]?.content || "", openai);
-      const { data: chatData, error: chatError } = await supabase
+      const { error: chatError } = await supabase
         .from("user_chats")
         .insert([
           {
+            id: chatId,
             user_id: user.id,
             title: title,
           },
@@ -166,7 +168,7 @@ export async function POST(req: NextRequest) {
         .select();
 
       if (chatError) throw chatError;
-      currentChatId = chatData[0].id;
+      // currentChatId = chatData[0].id;
     }
 
     // TODO: fix choosing model

@@ -26,6 +26,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TextShimmer } from "@/components/text-shimmer";
 import FileUploadHandler from "@/components/file-upload-handler";
+import { v4 as uuidv4 } from "uuid";
 
 // TODO: move to types folder
 interface Message {
@@ -371,12 +372,20 @@ const MessageContent = ({ content }: { content: string }) => {
   );
 };
 
+const generateUUID = (): string => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [model, setModel] = useState<string>("");
-  const [chatId, setChatId] = useState("");
+  const [chatId, setChatId] = useState(uuidv4());
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -470,6 +479,7 @@ export default function ChatPage() {
       setInput("");
 
       const formData = new FormData();
+      formData.append("title", "");
       formData.append("chatId", chatId || "");
       formData.append("messages", JSON.stringify([...messages, userMessage]));
       formData.append("model", model || "");
