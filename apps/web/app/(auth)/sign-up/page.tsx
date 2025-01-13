@@ -21,6 +21,7 @@ import {
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Provider, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { Separator } from "@workspace/ui/components/separator";
 
 const formSchema = z.object({
   email: z
@@ -212,6 +213,13 @@ export default function SignUpPage() {
                   )}
                 </Button>
               ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Separator orientation="horizontal" className="shrink" />
+              <span className="text-sm text-muted-foreground font-medium">
+                or
+              </span>
+              <Separator orientation="horizontal" className="shrink" />
             </div>
             <Form {...form}>
               <form
