@@ -9,6 +9,7 @@ const FileUploadHandler = ({
   onFileUpload,
   onFileRemove,
   onUploadStateChange,
+  chatId,
 }) => {
   const supabase = createClient();
   const [uploading, setUploading] = useState(false);
@@ -73,6 +74,26 @@ const FileUploadHandler = ({
           path: filePath,
         };
 
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (chatId) {
+          const { error: updateError } = await supabase
+            .from("chat_files")
+            .insert({
+              file_id: uploadedFile.id,
+              original_name: uploadedFile.originalName,
+              file_type: uploadedFile.type,
+              file_size: uploadedFile.size,
+              url: uploadedFile.url,
+              chat_id: chatId,
+              user_id: user.id,
+            });
+
+          if (updateError) throw updateError;
+        }
+
         setUploadedFiles((prev) => [...prev, uploadedFile]);
         onFileUpload(uploadedFile);
       }
@@ -81,7 +102,7 @@ const FileUploadHandler = ({
       alert(`Failed to upload file: ${error.message}`);
     } finally {
       setUploading(false);
-      onUploadStateChange(false); // Notify parent component that upload finished
+      onUploadStateChange(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }

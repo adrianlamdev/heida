@@ -25,6 +25,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useParams } from "next/navigation";
+import CommandMenu from "@/components/command-menu";
+import FileUploadHandler from "@/components/file-upload-handler";
 
 const generateUUID = (): string => {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -410,12 +412,11 @@ export default function ChatPage() {
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [chatFiles, setChatFiles] = useState<File[]>([]);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (chatData?.messages) {
@@ -424,22 +425,12 @@ export default function ChatPage() {
     }
   }, [chatData]);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    const files = Array.from(event.target.files);
-    setAttachedFiles((prev) => [...prev, ...files]);
+  const handleFileUploaded = (uploadedFile) => {
+    setChatFiles((prev) => [...prev, uploadedFile]);
   };
 
-  const handleFileRemove = (index: number) => {
-    setAttachedFiles((prev) => {
-      const newFiles = [...prev];
-      newFiles.splice(index, 1);
-      return newFiles;
-    });
-  };
-
-  const handlePaperclipClick = () => {
-    fileInputRef.current?.click();
+  const handleFileRemoved = (removedFile) => {
+    setChatFiles((prev) => prev.filter((file) => file.id !== removedFile.id));
   };
 
   const resetFileAttachment = () => {
@@ -451,19 +442,12 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (fileAttachmentReset) {
-      setAttachedFiles([]);
-      setFileAttachmentReset(false);
-    }
-  }, [fileAttachmentReset]);
-
-  useEffect(() => {
     console.log("Current messages:", messages);
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && attachedFiles.length === 0) || loading) return;
+    if ((!input.trim() && chatFiles.length === 0) || loading) return;
 
     try {
       setIsLoading(true);
@@ -480,11 +464,9 @@ export default function ChatPage() {
         created_at: new Date().toISOString(),
         metadata: {},
       };
-      console.log("Adding user message:", userMessage); // Add this line
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
-      resetFileAttachment();
 
       const formData = new FormData();
       formData.append(
@@ -504,9 +486,13 @@ export default function ChatPage() {
       );
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
-      attachedFiles.forEach((file, index) => {
-        formData.append(`attachments[${index}]`, file);
-      });
+
+      if (chatFiles.length > 0) {
+        formData.append(
+          "fileIds",
+          JSON.stringify(chatFiles.map((file) => file.id)),
+        );
+      }
 
       const response = await fetch(`/api/v1/chat/${chatId}`, {
         method: "POST",
@@ -663,24 +649,14 @@ export default function ChatPage() {
                   {/*   <MoreVertical className="h-5 w-5" /> */}
                   {/* </Button> */}
 
-                  <Input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    multiple
-                  />
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePaperclipClick}
-                    className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent"
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-
+                  {chatId && (
+                    <FileUploadHandler
+                      onFileUpload={handleFileUploaded}
+                      onFileRemove={handleFileRemoved}
+                      onUploadStateChange={setIsUploading}
+                      chatId={chatId}
+                    />
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -700,40 +676,13 @@ ${
                     {webSearchEnabled && <X className="h-4 w-4" />}
                   </Button>
                 </div>
-
-                {attachedFiles.length > 0 && (
-                  <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg">
-                    <div className="flex flex-col gap-2">
-                      {attachedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <File className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm truncate max-w-[200px]">
-                              {file.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            className="text-muted-foreground hover:bg-transparent"
-                            onClick={() => handleFileRemove(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 relative">
+                {/* <CommandMenu */}
+                {/*   isOpen={showCommandMenu} */}
+                {/*   onSelect={handleCommandSelect} */}
+                {/*   onClose={() => setShowCommandMenu(false)} */}
+                {/* /> */}
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -743,10 +692,11 @@ ${
                       handleSubmit(e);
                     }
                   }}
+                  disabled={isUploading}
                   placeholder={
-                    attachedFiles.length > 0
-                      ? "Add a message..."
-                      : "Type a message..."
+                    chatFiles.length > 0
+                      ? "Ask about files, or use / for commands, @ for presets..."
+                      : "Type / for commands, @ for presets..."
                   }
                   className="shadow-none w-full border-none focus:bg-transparent hover:bg-transparent bg-transparent focus-visible:ring-0 outline-none p-2 h-10 text-[1rem] placeholder:text-[0.9rem]"
                 />
@@ -754,7 +704,7 @@ ${
             </div>
             <AnimatePresence mode="wait">
               <motion.div
-                key={loading ? "loading" : "idle"}
+                key={isLoading ? "loading" : "idle"}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.95 }}
@@ -766,11 +716,12 @@ ${
                   size="icon"
                   className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
-                    !loading && !input.trim() && attachedFiles.length === 0
+                    isUploading ||
+                    (!loading && !input.trim() && chatFiles.length === 0)
                   }
                   onClick={(e) => {
                     e.preventDefault();
-                    if (loading) {
+                    if (isLoading) {
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         setIsLoading(false);
@@ -782,7 +733,7 @@ ${
                     }
                   }}
                 >
-                  {loading ? (
+                  {isLoading ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <ArrowUp className="h-5 w-5" />

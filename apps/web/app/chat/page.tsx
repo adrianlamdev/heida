@@ -468,7 +468,6 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
-      // resetFileAttachment();
 
       const formData = new FormData();
       formData.append("chatId", chatId || "");
@@ -653,6 +652,7 @@ export default function ChatPage() {
                     onFileUpload={handleFileUploaded}
                     onFileRemove={handleFileRemoved}
                     onUploadStateChange={setIsUploading}
+                    chatId={chatId}
                   />
                   <Button
                     type="button"
@@ -673,38 +673,6 @@ ${
                     {webSearchEnabled && <X className="h-4 w-4" />}
                   </Button>
                 </div>
-
-                {/* {attachedFiles.length > 0 && ( */}
-                {/*   <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg"> */}
-                {/*     <div className="flex flex-col gap-2"> */}
-                {/*       {attachedFiles.map((file, index) => ( */}
-                {/*         <div */}
-                {/*           key={index} */}
-                {/*           className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50" */}
-                {/*         > */}
-                {/*           <div className="flex items-center gap-2"> */}
-                {/*             <File className="h-4 w-4 text-muted-foreground" /> */}
-                {/*             <span className="text-sm truncate max-w-[200px]"> */}
-                {/*               {file.name} */}
-                {/*             </span> */}
-                {/*             <span className="text-xs text-muted-foreground"> */}
-                {/*               ({(file.size / 1024).toFixed(1)} KB) */}
-                {/*             </span> */}
-                {/*           </div> */}
-                {/*           <Button */}
-                {/*             variant="ghost" */}
-                {/*             size="icon" */}
-                {/*             type="button" */}
-                {/*             className="text-muted-foreground hover:bg-transparent" */}
-                {/*             onClick={() => handleFileRemove(index)} */}
-                {/*           > */}
-                {/*             <X className="h-4 w-4" /> */}
-                {/*           </Button> */}
-                {/*         </div> */}
-                {/*       ))} */}
-                {/*     </div> */}
-                {/*   </div> */}
-                {/* )} */}
               </div>
               <div className="flex-1 min-w-0 relative">
                 <CommandMenu
