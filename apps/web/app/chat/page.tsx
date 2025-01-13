@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { TextShimmer } from "@/components/text-shimmer";
+import FileUploadHandler from "@/components/file-upload-handler";
 
 // TODO: move to types folder
 interface Message {
@@ -379,8 +380,8 @@ export default function ChatPage() {
   const [showDialog, setShowDialog] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const [fileAttachmentReset, setFileAttachmentReset] = useState(false);
+  const [chatFiles, setChatFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [status, setStatus] = useState("");
   const [showStatus, setShowStatus] = useState(false);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
@@ -402,40 +403,48 @@ export default function ChatPage() {
     setInput(command.template);
   };
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    const files = Array.from(event.target.files);
-    setAttachedFiles((prev) => [...prev, ...files]);
-  };
-
-  const handleFileRemove = (index: number) => {
-    setAttachedFiles((prev) => {
-      const newFiles = [...prev];
-      newFiles.splice(index, 1);
-      return newFiles;
-    });
-  };
-
-  const handlePaperclipClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const resetFileAttachment = () => {
-    setFileAttachmentReset((prev) => !prev);
-  };
+  // const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (!event.target.files) return;
+  //   const files = Array.from(event.target.files);
+  //   setAttachedFiles((prev) => [...prev, ...files]);
+  // };
+  //
+  // const handleFileRemove = (index: number) => {
+  //   setAttachedFiles((prev) => {
+  //     const newFiles = [...prev];
+  //     newFiles.splice(index, 1);
+  //     return newFiles;
+  //   });
+  // };
+  //
+  // const handlePaperclipClick = () => {
+  //   fileInputRef.current?.click();
+  // };
+  //
+  // const resetFileAttachment = () => {
+  //   setFileAttachmentReset((prev) => !prev);
+  // };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    if (fileAttachmentReset) {
-      setAttachedFiles([]);
-      setFileAttachmentReset(false);
-    }
-  }, [fileAttachmentReset]);
+  // useEffect(() => {
+  //   if (fileAttachmentReset) {
+  //     setAttachedFiles([]);
+  //     setFileAttachmentReset(false);
+  //   }
+  // }, [fileAttachmentReset]);
+
+  const handleFileUploaded = (uploadedFile) => {
+    setChatFiles((prev) => [...prev, uploadedFile]);
+  };
+
+  const handleFileRemoved = (removedFile) => {
+    setChatFiles((prev) => prev.filter((file) => file.id !== removedFile.id));
+  };
 
   const handleSubmit = async (
     e: React.FormEvent | null,
@@ -443,8 +452,7 @@ export default function ChatPage() {
   ) => {
     if (e) e.preventDefault();
     const currentInput = recommendedPrompt || input;
-    if ((!currentInput.trim() && attachedFiles.length === 0) || isLoading)
-      return;
+    if ((!currentInput.trim() && chatFiles.length === 0) || isLoading) return;
 
     try {
       setIsLoading(true);
@@ -460,16 +468,20 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, userMessage]);
       setInput("");
-      resetFileAttachment();
+      // resetFileAttachment();
 
       const formData = new FormData();
       formData.append("chatId", chatId || "");
       formData.append("messages", JSON.stringify([...messages, userMessage]));
       formData.append("model", model || "");
       formData.append("webSearchEnabled", webSearchEnabled.toString());
-      attachedFiles.forEach((file, index) => {
-        formData.append(`attachments[${index}]`, file);
-      });
+
+      if (chatFiles.length > 0) {
+        formData.append(
+          "fileIds",
+          JSON.stringify(chatFiles.map((file) => file.id)),
+        );
+      }
 
       const response = await fetch("/api/v1/chat", {
         method: "POST",
@@ -619,24 +631,29 @@ export default function ChatPage() {
                   {/*   <MoreVertical className="h-5 w-5" /> */}
                   {/* </Button> */}
 
-                  <Input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    multiple
+                  {/* <Input */}
+                  {/*   type="file" */}
+                  {/*   ref={fileInputRef} */}
+                  {/*   onChange={handleFileSelect} */}
+                  {/*   className="hidden" */}
+                  {/*   multiple */}
+                  {/* /> */}
+                  {/**/}
+                  {/* <Button */}
+                  {/*   type="button" */}
+                  {/*   variant="ghost" */}
+                  {/*   size="icon" */}
+                  {/*   onClick={handlePaperclipClick} */}
+                  {/*   className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent" */}
+                  {/* > */}
+                  {/*   <Paperclip className="h-5 w-5" /> */}
+                  {/* </Button> */}
+
+                  <FileUploadHandler
+                    onFileUpload={handleFileUploaded}
+                    onFileRemove={handleFileRemoved}
+                    onUploadStateChange={setIsUploading}
                   />
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePaperclipClick}
-                    className="w-8 h-8 shrink-0 text-muted-foreground hover:text-primary transition-colors rounded-full hover:bg-transparent"
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-
                   <Button
                     type="button"
                     variant="ghost"
@@ -657,37 +674,37 @@ ${
                   </Button>
                 </div>
 
-                {attachedFiles.length > 0 && (
-                  <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg">
-                    <div className="flex flex-col gap-2">
-                      {attachedFiles.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50"
-                        >
-                          <div className="flex items-center gap-2">
-                            <File className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm truncate max-w-[200px]">
-                              {file.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            className="text-muted-foreground hover:bg-transparent"
-                            onClick={() => handleFileRemove(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* {attachedFiles.length > 0 && ( */}
+                {/*   <div className="absolute bottom-full mb-2 left-0 w-full bg-background rounded-lg p-2 border shadow-lg"> */}
+                {/*     <div className="flex flex-col gap-2"> */}
+                {/*       {attachedFiles.map((file, index) => ( */}
+                {/*         <div */}
+                {/*           key={index} */}
+                {/*           className="flex items-center justify-between rounded-lg px-2 py-1 border bg-secondary/50" */}
+                {/*         > */}
+                {/*           <div className="flex items-center gap-2"> */}
+                {/*             <File className="h-4 w-4 text-muted-foreground" /> */}
+                {/*             <span className="text-sm truncate max-w-[200px]"> */}
+                {/*               {file.name} */}
+                {/*             </span> */}
+                {/*             <span className="text-xs text-muted-foreground"> */}
+                {/*               ({(file.size / 1024).toFixed(1)} KB) */}
+                {/*             </span> */}
+                {/*           </div> */}
+                {/*           <Button */}
+                {/*             variant="ghost" */}
+                {/*             size="icon" */}
+                {/*             type="button" */}
+                {/*             className="text-muted-foreground hover:bg-transparent" */}
+                {/*             onClick={() => handleFileRemove(index)} */}
+                {/*           > */}
+                {/*             <X className="h-4 w-4" /> */}
+                {/*           </Button> */}
+                {/*         </div> */}
+                {/*       ))} */}
+                {/*     </div> */}
+                {/*   </div> */}
+                {/* )} */}
               </div>
               <div className="flex-1 min-w-0 relative">
                 <CommandMenu
@@ -704,8 +721,9 @@ ${
                       handleSubmit(e);
                     }
                   }}
+                  disabled={isUploading}
                   placeholder={
-                    attachedFiles.length > 0
+                    chatFiles.length > 0
                       ? "Ask about files, or use / for commands, @ for presets..."
                       : "Type / for commands, @ for presets..."
                   }
@@ -727,7 +745,8 @@ ${
                   size="icon"
                   className="h-8 w-8 rounded-full flex items-center justify-center"
                   disabled={
-                    !isLoading && !input.trim() && attachedFiles.length === 0
+                    isUploading ||
+                    (!isLoading && !input.trim() && chatFiles.length === 0)
                   }
                   onClick={(e) => {
                     e.preventDefault();
