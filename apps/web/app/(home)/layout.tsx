@@ -1,7 +1,7 @@
 import Footer from "@/components/layout/footer";
 import Nav from "@/components/layout/nav";
 
-export default function ChatLayout({
+export default function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
