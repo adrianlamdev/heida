@@ -13,9 +13,21 @@ from dotenv import load_dotenv
 import os
 import time
 from functools import lru_cache
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+
+load_dotenv()
+
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
+
 
 document_processor = None
 reranker = None
+
+# NOTE: instead of using local dir as cache maybe use supabase storage?
 
 
 @asynccontextmanager
@@ -25,6 +37,7 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing DocumentProcessor and Reranker module")
     document_processor = DocumentProcessor()
     reranker = Reranker()
+
     yield
     document_processor = None
     reranker = None
@@ -167,7 +180,9 @@ async def search_documents(query: str) -> StreamingResponse:
 
 @app.post("/api/v1/retrieve")
 async def retrieve(
-    query: str = Form(..., min_length=1), file: UploadFile = File(...)
+    query: str = Form(..., min_length=1),
+    user_id: str = Form(..., min_lenght=1),
+    file_id: str = Form(..., min_length=1),
 ) -> Dict:
     """
     Endpoint to perform document retrieval based on a query and uploaded file.
@@ -182,9 +197,15 @@ async def retrieve(
     Raises:
         HTTPException: If file type is unsupported or processing fails
     """
+    # FIXME: ADD USER_ID TO VERIFY USER_ID
+    response = supabase.table("chat_files").select("*").execute()
+    file_data = response.data[0]
+
+    file = supabase.storage.from_("user-uploads").download(f"{user_id}/{file_id}")
+
     logger.info(
         "Received retrieval request",
-        file_type=file.content_type,
+        file_type=file_data["file_type"],
     )
     global document_processor, reranker
 
@@ -197,22 +218,17 @@ async def retrieve(
     elif not file:
         logger.warning("No file uploaded")
         raise HTTPException(status_code=400, detail="No file")
-    elif file.content_type not in SUPPORTED_CONTENT_TYPES:
-        logger.warning("Unsupported file type", content_type=file.content_type)
+    elif file_data["file_type"] not in SUPPORTED_CONTENT_TYPES:
+        logger.warning("Unsupported file type", content_type=file_data.file_type)
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type. Supported types are: {', '.join(SUPPORTED_CONTENT_TYPES)}",
         )
 
     try:
-        file_read_start = time.perf_counter()
-        file_content = await file.read()
-        timings["file_read"] = time.perf_counter() - file_read_start
-        logger.info("File read successfully", content_length=len(file_content))
-
         processing_start = time.perf_counter()
         chunks, embeddings, bm25 = document_processor.process_documents(
-            file_content, file.content_type
+            file, file_data["file_type"]
         )
         timings["document_processing"] = time.perf_counter() - processing_start
 
