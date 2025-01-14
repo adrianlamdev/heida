@@ -46,14 +46,13 @@ export default function RootLayout({
               classNames: {
                 toast:
                   "fixed right-0 m-6 flex items-center gap-2 px-4 py-2 rounded-md border text-sm text-nowrap backdrop-blur shadow",
-                error:
-                  "bg-rose-800/20 border-rose-800/30 text-rose-700 mx-auto",
+                error: "bg-rose-800/20 border-rose-800/30 text-rose-700",
                 success: "bg-green-800/20 border-green-800/30 text-green-700",
                 warning:
                   "bg-yellow-800/20 border-yellow-800/30 text-yellow-700",
                 info: "bg-blue-800/20 border-blue-800/30 text-blue-700",
                 loading: "bg-gray-800/20 border-gray-800/30 text-gray-700",
-                title: "font-medium",
+                title: "font-medium block",
                 description: "text-muted-foreground",
                 actionButton:
                   "px-2 py-1 bg-primary text-primary-foreground rounded hover:opacity-90",

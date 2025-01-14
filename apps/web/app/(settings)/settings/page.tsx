@@ -144,6 +144,7 @@ export default function SettingsPage() {
 
 const ProfileSection = ({ user }: { user: User | null }) => {
   const supabase = createClient();
+  const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(true);
   const [emailPreferences, setEmailPreferences] = useState({
     marketing: false,
@@ -173,7 +174,7 @@ const ProfileSection = ({ user }: { user: User | null }) => {
           });
         }
       } catch (error) {
-        console.error("Error loading email preferences:", error);
+        toast.error("Failed to load email preferences. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -197,7 +198,7 @@ const ProfileSection = ({ user }: { user: User | null }) => {
       setEmailPreferences((prev) => ({ ...prev, [key]: value }));
       setSaveStatus("idle");
     } catch (error) {
-      console.error("Error updating preference:", error);
+      toast.error("Failed to update email preferences. Please try again.");
       setSaveStatus("error");
     }
   };
@@ -211,13 +212,36 @@ const ProfileSection = ({ user }: { user: User | null }) => {
     );
   }
 
+  const handleEmailChange = async () => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.auth.updateUser(
+        {
+          email: email,
+        },
+        {
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        },
+      );
+
+      if (error) throw error;
+
+      toast.success(
+        "Email updated successfully. Please check your inbox to verify your new email address.",
+      );
+    } catch (error) {
+      toast.error("Failed to update email. Please try again.");
+      setSaveStatus("error");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {saveStatus === "error" && (
-        <Alert variant="destructive">
-          <AlertDescription>
-            Failed to save preferences. Please try again.
-          </AlertDescription>
+        <Alert className="backdrop-blur bg-rose-800/20 border-rose-800/30 text-rose-700 mx-auto">
+          <AlertDescription>Failed to save. Please try again.</AlertDescription>
         </Alert>
       )}
 
@@ -229,12 +253,21 @@ const ProfileSection = ({ user }: { user: User | null }) => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              value={user?.email}
-              disabled
-              className="w-full bg-muted"
-            />
+            <div className="flex items-center justify-between">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-1/2 bg-muted"
+              />
+              <Button
+                onClick={() => handleEmailChange()}
+                disabled={user?.email == email}
+                variant="outline"
+              >
+                Update
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -719,7 +752,7 @@ const ChatManagementSection = ({ user }: { user: User | null }) => {
 
       setHasChats(count ? count > 0 : false);
     } catch (error) {
-      console.error("Error fetching chat count:", error);
+      toast.error("Failed to load chat count");
     }
   };
 
@@ -733,7 +766,6 @@ const ChatManagementSection = ({ user }: { user: User | null }) => {
       if (error) throw error;
       setFiles(data || []);
     } catch (error) {
-      console.error("Error fetching files:", error);
       toast.error("Failed to load files");
     } finally {
       setIsLoading(false);
@@ -752,7 +784,6 @@ const ChatManagementSection = ({ user }: { user: User | null }) => {
       setFiles(files.filter((file) => file.file_id !== fileId));
       toast.success("File deleted successfully");
     } catch (error) {
-      console.error("Error deleting file:", error);
       toast.error("Failed to delete file");
     }
   };
@@ -771,7 +802,6 @@ const ChatManagementSection = ({ user }: { user: User | null }) => {
       setShowDeleteFilesDialog(false);
       toast.success("All files deleted successfully");
     } catch (error) {
-      console.error("Error deleting all files:", error);
       toast.error("Failed to delete files");
     } finally {
       setIsDeletingFiles(false);
@@ -804,7 +834,6 @@ const ChatManagementSection = ({ user }: { user: User | null }) => {
       setHasChats(false);
       toast.success("All chats deleted successfully");
     } catch (error) {
-      console.error("Error deleting chats:", error);
       toast.error("Failed to delete chats. Please try again.");
     } finally {
       setIsDeleting(false);
