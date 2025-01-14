@@ -1,13 +1,12 @@
 "use client";
 
-import { MouseEvent } from "react";
+import Loading from "@/app/loading";
 import { Card, CardTitle } from "@/components/feature-card";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
-import { toast } from "sonner";
 import { CardContent, CardHeader } from "@workspace/ui/components/card";
 import {
   Dialog,
@@ -39,13 +38,15 @@ import {
 } from "@workspace/ui/components/table";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { CreditCard, Download, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const supabase = createClient();
 
   const [selectedSection, setSelectedSection] = useState("profile");
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const {
@@ -108,6 +109,10 @@ export default function SettingsPage() {
     },
   ];
 
+  if (loading) {
+    return <Loading />;
+  }
+
   return (
     <section className="pt-12 px-4">
       <div className="max-w-5xl mx-auto space-y-8 w-full">
@@ -133,7 +138,6 @@ export default function SettingsPage() {
             {selectedSection === "chat-management" && (
               <ChatManagementSection user={user} />
             )}
-            {/* {selectedSection === "appearance" && <AppearanceSection />} */}
             {selectedSection === "billing" && <BillingSection />}
             {selectedSection === "account" && <AccountSection />}
           </ScrollArea>
