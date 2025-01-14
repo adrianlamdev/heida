@@ -7,6 +7,9 @@ import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
 
+import { toast } from "sonner";
+
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import {
   Select,
   SelectContent,
@@ -25,7 +28,14 @@ import { useEffect, useState } from "react";
 import { Switch } from "@workspace/ui/components/switch";
 import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { Slider } from "@workspace/ui/components/slider";
-import { CreditCard, Download, Calendar, Check, Scroll } from "lucide-react";
+import {
+  CreditCard,
+  Download,
+  Calendar,
+  Check,
+  Scroll,
+  Loader2,
+} from "lucide-react";
 import {
   RadioGroup,
   RadioGroupItem,
@@ -94,10 +104,6 @@ export default function SettingsPage() {
       name: "Profile",
     },
     {
-      id: "preferences",
-      name: "Model Preferences",
-    },
-    {
       id: "chat-management",
       name: "Chat & Knowledge",
     },
@@ -145,8 +151,9 @@ export default function SettingsPage() {
           </div>
           <ScrollArea className="w-full h-[70dvh]">
             {selectedSection === "profile" && <ProfileSection user={user} />}
-            {selectedSection === "preferences" && <ModelPreferencesSection />}
-            {selectedSection === "chat-management" && <ChatManagementSection />}
+            {selectedSection === "chat-management" && (
+              <ChatManagementSection user={user} />
+            )}
             {/* {selectedSection === "appearance" && <AppearanceSection />} */}
             {selectedSection === "billing" && <BillingSection />}
             {selectedSection === "account" && <AccountSection />}
@@ -158,14 +165,85 @@ export default function SettingsPage() {
 }
 
 const ProfileSection = ({ user }: { user: User | null }) => {
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
   const [emailPreferences, setEmailPreferences] = useState({
     marketing: false,
-    updates: true,
-    security: true,
+    product_updates: true,
   });
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "error">(
+    "idle",
+  );
+
+  useEffect(() => {
+    async function loadPreferences() {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("email_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setEmailPreferences({
+            marketing: data.marketing,
+            product_updates: data.product_updates,
+            security_alerts: data.security_alerts,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading email preferences:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPreferences();
+  }, [user, supabase]);
+
+  const updatePreference = async (key: string, value: boolean) => {
+    if (!user) return;
+
+    setSaveStatus("saving");
+    try {
+      const { error } = await supabase
+        .from("email_preferences")
+        .update({ [key]: value, updated_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      setEmailPreferences((prev) => ({ ...prev, [key]: value }));
+      setSaveStatus("idle");
+    } catch (error) {
+      console.error("Error updating preference:", error);
+      setSaveStatus("error");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="w-full h-[30dvh]" />
+        <Skeleton className="w-full h-[30dvh]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {saveStatus === "error" && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Failed to save preferences. Please try again.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Profile Information Card */}
       <Card className="p-1">
         <CardHeader>
@@ -179,14 +257,6 @@ const ProfileSection = ({ user }: { user: User | null }) => {
               value={user?.email}
               disabled
               className="w-full bg-muted"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Full Name</label>
-            <Input
-              type="text"
-              placeholder="Enter your full name"
-              className="w-full"
             />
           </div>
         </CardContent>
@@ -211,13 +281,12 @@ const ProfileSection = ({ user }: { user: User | null }) => {
               <Switch
                 checked={emailPreferences.marketing}
                 onCheckedChange={(checked) =>
-                  setEmailPreferences({
-                    ...emailPreferences,
-                    marketing: checked,
-                  })
+                  updatePreference("marketing", checked)
                 }
+                disabled={saveStatus === "saving"}
               />
             </div>
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <div className="font-medium">Product Updates</div>
@@ -226,183 +295,14 @@ const ProfileSection = ({ user }: { user: User | null }) => {
                 </div>
               </div>
               <Switch
-                checked={emailPreferences.updates}
+                checked={emailPreferences.product_updates}
                 onCheckedChange={(checked) =>
-                  setEmailPreferences({ ...emailPreferences, updates: checked })
+                  updatePreference("product_updates", checked)
                 }
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="font-medium">Security Alerts</div>
-                <div className="text-sm text-muted-foreground">
-                  Receive important security notifications
-                </div>
-              </div>
-              <Switch
-                checked={emailPreferences.security}
-                onCheckedChange={(checked) =>
-                  setEmailPreferences({
-                    ...emailPreferences,
-                    security: checked,
-                  })
-                }
+                disabled={saveStatus === "saving"}
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-const ModelPreferencesSection = () => {
-  const [modelSettings, setModelSettings] = useState({
-    defaultModel: "claude-3-sonnet",
-    temperature: 0.7,
-    contextLength: 8000,
-  });
-
-  const [autoRotation, setAutoRotation] = useState({
-    enabled: false,
-    costOptimized: true,
-    speedOptimized: false,
-  });
-
-  return (
-    <div className="space-y-6">
-      {/* Default Model Settings Card */}
-      <Card className="p-1">
-        <CardHeader>
-          <CardTitle>Default Model Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Default Model</label>
-            <Input
-              value={modelSettings.defaultModel}
-              onChange={(e) =>
-                setModelSettings({
-                  ...modelSettings,
-                  defaultModel: e.target.value,
-                })
-              }
-              className="w-full"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <label className="text-sm font-medium">Temperature</label>
-              <span className="text-sm text-muted-foreground">
-                {modelSettings.temperature}
-              </span>
-            </div>
-            <div></div>
-            <Slider
-              value={[modelSettings.temperature]}
-              onValueChange={([value]) =>
-                setModelSettings({ ...modelSettings, temperature: value! })
-              }
-              max={1}
-              step={0.1}
-              className="w-full"
-            />
-            <div className="flex justify-between">
-              <p className="text-sm text-muted-foreground">More creative</p>
-              <p className="text-sm text-muted-foreground">
-                More deterministic
-              </p>
-            </div>
-          </div>
-
-          {/* <div className="space-y-2"> */}
-          {/*   <div className="flex justify-between"> */}
-          {/*     <label className="text-sm font-medium">Context Length</label> */}
-          {/*     <span className="text-sm text-muted-foreground"> */}
-          {/*       {modelSettings.contextLength} tokens */}
-          {/*     </span> */}
-          {/*   </div> */}
-          {/*   <Slider */}
-          {/*     value={[modelSettings.contextLength]} */}
-          {/*     onValueChange={([value]) => */}
-          {/*       setModelSettings({ ...modelSettings, contextLength: value }) */}
-          {/*     } */}
-          {/*     min={1000} */}
-          {/*     max={200000} */}
-          {/*     step={1000} */}
-          {/*     className="w-full" */}
-          {/*   /> */}
-          {/*   <p className="text-sm text-muted-foreground"> */}
-          {/*     Maximum length of conversation history to include */}
-          {/*   </p> */}
-          {/* </div> */}
-        </CardContent>
-      </Card>
-
-      {/* Auto Model Rotation Card */}
-      <Card className="p-1">
-        <CardHeader>
-          <CardTitle>Auto Model Rotation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="font-medium">Enable Auto Rotation</div>
-              <div className="text-sm text-muted-foreground">
-                Automatically switch between models based on task requirements
-              </div>
-            </div>
-            <Switch
-              checked={autoRotation.enabled}
-              onCheckedChange={(checked) =>
-                setAutoRotation({
-                  ...autoRotation,
-                  enabled: checked,
-                })
-              }
-            />
-          </div>
-
-          {autoRotation.enabled && (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="font-medium">Cost Optimization</div>
-                  <div className="text-sm text-muted-foreground">
-                    Prefer models with lower token costs when possible
-                  </div>
-                </div>
-                <Switch
-                  checked={autoRotation.costOptimized}
-                  onCheckedChange={(checked) =>
-                    setAutoRotation({
-                      ...autoRotation,
-                      costOptimized: checked,
-                    })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="font-medium">Speed Optimization</div>
-                  <div className="text-sm text-muted-foreground">
-                    Prefer faster models for simple tasks
-                  </div>
-                </div>
-                <Switch
-                  checked={autoRotation.speedOptimized}
-                  onCheckedChange={(checked) =>
-                    setAutoRotation({
-                      ...autoRotation,
-                      speedOptimized: checked,
-                    })
-                  }
-                />
-              </div>
-            </>
-          )}
         </CardContent>
       </Card>
     </div>
@@ -777,7 +677,138 @@ const AccountSection = () => {
   );
 };
 
-const ChatManagementSection = () => {
+const ChatManagementSection = ({ user }: { user: User | null }) => {
+  const [hasChats, setHasChats] = useState(false);
+  const [showDeleteFilesDialog, setShowDeleteFilesDialog] = useState(false);
+  const [isDeletingFiles, setIsDeletingFiles] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [files, setFiles] = useState<
+    Array<{
+      file_id: string;
+      original_name: string;
+      file_type: string;
+      file_size: number;
+      created_at: string;
+      embedding: boolean;
+    }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchChatCount();
+    fetchFiles();
+  }, []);
+
+  const fetchChatCount = async () => {
+    try {
+      if (!user) return;
+
+      const { count, error } = await supabase
+        .from("user_chats")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .neq("id", "f0f75884-bddf-40a8-8f30-45ab53c1020f");
+
+      if (error) throw error;
+
+      setHasChats(count ? count > 0 : false);
+    } catch (error) {
+      console.error("Error fetching chat count:", error);
+    }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("chat_files")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFiles(data || []);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      toast.error("Failed to load files");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    try {
+      const { error } = await supabase
+        .from("chat_files")
+        .delete()
+        .eq("file_id", fileId);
+
+      if (error) throw error;
+
+      setFiles(files.filter((file) => file.file_id !== fileId));
+      toast.success("File deleted successfully");
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      toast.error("Failed to delete file");
+    }
+  };
+
+  const handleDeleteAllFiles = async () => {
+    setIsDeletingFiles(true);
+    try {
+      const { error } = await supabase
+        .from("chat_files")
+        .delete()
+        .neq("file_id", "");
+
+      if (error) throw error;
+
+      setFiles([]);
+      setShowDeleteFilesDialog(false);
+      toast.success("All files deleted successfully");
+    } catch (error) {
+      console.error("Error deleting all files:", error);
+      toast.error("Failed to delete files");
+    } finally {
+      setIsDeletingFiles(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  };
+
+  const filteredFiles = files.filter((file) =>
+    file.original_name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const handleDeleteAllChats = async () => {
+    setIsDeleting(true);
+    try {
+      if (!user) return;
+      const { error } = await supabase
+        .from("user_chats")
+        .delete()
+        .eq("user_id", user.id)
+        .neq("id", "f0f75884-bddf-40a8-8f30-45ab53c1020f");
+
+      if (error) throw error;
+
+      setShowDeleteDialog(false);
+      setHasChats(false);
+      toast.success("All chats deleted successfully");
+    } catch (error) {
+      console.error("Error deleting chats:", error);
+      toast.error("Failed to delete chats. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Chat History Card */}
@@ -845,9 +876,14 @@ const ChatManagementSection = () => {
                   Permanently delete all chat conversations
                 </p>
               </div>
-              <Dialog>
+              <Dialog
+                open={showDeleteDialog}
+                onOpenChange={setShowDeleteDialog}
+              >
                 <DialogTrigger asChild>
-                  <Button variant="destructive">Delete all chats</Button>
+                  <Button variant="destructive" disabled={!hasChats}>
+                    Delete Chat History
+                  </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -858,10 +894,27 @@ const ChatManagementSection = () => {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex justify-end gap-3 mt-4">
-                    <DialogTrigger asChild>
-                      <Button variant="outline">Cancel</Button>
-                    </DialogTrigger>
-                    <Button variant="destructive">Clear History</Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteDialog(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAllChats}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        "Delete History"
+                      )}
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -875,7 +928,48 @@ const ChatManagementSection = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Knowledge Base</CardTitle>
-            <Button variant="destructive">Delete all files</Button>
+            <Dialog
+              open={showDeleteFilesDialog}
+              onOpenChange={setShowDeleteFilesDialog}
+            >
+              <DialogTrigger asChild>
+                <Button variant="destructive" disabled={files.length === 0}>
+                  Delete all files
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete All Files</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete all files? This action
+                    cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteFilesDialog(false)}
+                    disabled={isDeletingFiles}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAllFiles}
+                    disabled={isDeletingFiles}
+                  >
+                    {isDeletingFiles ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete All Files"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -885,46 +979,61 @@ const ChatManagementSection = () => {
               conversations
             </div>
 
-            <Input placeholder="Search files" className="w-full" />
-            <div className="space-y-2">
-              {/* Example uploaded files list */}
-              <div className="flex items-center justify-between p-2 border rounded-md">
-                <div className="flex items-center space-x-4">
-                  <Button size="icon" variant="outline">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <div>
-                    <p className="text-sm font-medium">documentation.pdf</p>
-                    <p className="text-xs text-muted-foreground">2.3 MB</p>
-                  </div>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <Badge
-                    variant="secondary"
-                    className="w-fit bg-green-800/20 text-green-700 border-green-800/30 hover:bg-green-800/15"
-                  >
-                    indexed
-                  </Badge>
-                  <Button variant="ghost" size="sm">
-                    Remove
-                  </Button>
-                </div>
-              </div>
+            <Input
+              placeholder="Search files"
+              className="w-full"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
 
-              <div className="flex items-center justify-between p-2 border rounded-md">
-                <div className="flex items-center space-x-4">
-                  <Button size="icon" variant="outline">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <div>
-                    <p className="text-sm font-medium">data.csv</p>
-                    <p className="text-xs text-muted-foreground">156 KB</p>
-                  </div>
+            <div className="space-y-2">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
-                <Button variant="ghost" size="sm">
-                  Remove
-                </Button>
-              </div>
+              ) : filteredFiles.length > 0 ? (
+                filteredFiles.map((file) => (
+                  <div
+                    key={file.file_id}
+                    className="flex items-center justify-between p-2 border rounded-md"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <Button size="icon" variant="outline">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {file.original_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(file.file_size)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      {file.embedding && (
+                        <Badge
+                          variant="secondary"
+                          className="w-fit bg-green-800/20 text-green-700 border-green-800/30 hover:bg-green-800/15"
+                        >
+                          indexed
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteFile(file.file_id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No files found
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-center border-2 border-dashed rounded-lg p-4">
