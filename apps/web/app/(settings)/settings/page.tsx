@@ -4,12 +4,21 @@ import { Card, CardTitle } from "@/components/feature-card";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
-import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
-
+import { Button } from "@workspace/ui/components/button";
 import { toast } from "sonner";
-
-import { Skeleton } from "@workspace/ui/components/skeleton";
+import { CardContent, CardHeader } from "@workspace/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
+import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import {
   Select,
   SelectContent,
@@ -17,30 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select";
-import { Textarea } from "@workspace/ui/components/textarea";
-import {
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@workspace/ui/components/card";
-import { Input } from "@workspace/ui/components/input";
-import { useEffect, useState } from "react";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Switch } from "@workspace/ui/components/switch";
-import { ScrollArea } from "@workspace/ui/components/scroll-area";
-import { Slider } from "@workspace/ui/components/slider";
-import {
-  CreditCard,
-  Download,
-  Calendar,
-  Check,
-  Scroll,
-  Loader2,
-  Delete,
-} from "lucide-react";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@workspace/ui/components/radio-group";
 import {
   Table,
   TableBody,
@@ -49,15 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@workspace/ui/components/dialog";
-import { Label } from "@workspace/ui/components/label";
+import { Textarea } from "@workspace/ui/components/textarea";
+import { CreditCard, Download, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -512,38 +493,6 @@ const CancelDialog = () => {
 };
 
 const AccountSection = () => {
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const handleDeleteAccount = async () => {
-    // Implement account deletion logic here
-    console.log("Account deletion requested");
-  };
-  const [sessions, setSessions] = useState([
-    {
-      id: 1,
-      device: "Chrome / Windows",
-      location: "New York, US",
-      lastActive: "2 hours ago",
-      current: true,
-    },
-    {
-      id: 2,
-      device: "Safari / macOS",
-      location: "San Francisco, US",
-      lastActive: "2 days ago",
-      current: false,
-    },
-  ]);
-
-  const handlePasswordChange = () => {
-    // Implement password change logic
-    console.log("Password change requested");
-  };
-
-  const handleSessionRevoke = (sessionId) => {
-    setSessions(sessions.filter((session) => session.id !== sessionId));
-  };
-
   return (
     <div className="space-y-6">
       {/* Data & Privacy Card */}
@@ -619,6 +568,7 @@ const DeleteAccountDialog = () => {
     "Other",
   ];
 
+  // TODO: implement rate limiting
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
