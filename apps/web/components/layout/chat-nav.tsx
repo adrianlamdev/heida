@@ -85,7 +85,6 @@ export default function ChatNav() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showAPIDialog, setShowAPIDialog] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
-  const [showAccountDialog, setShowAccountDialog] = useState(false);
   const [showChatSettingsDialog, setShowChatSettingsDialog] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState("openrouter");
   const [selectedSection, setSelectedSection] = useState("profile");
@@ -566,13 +565,13 @@ export default function ChatNav() {
                       {/*   <span>Profile</span> */}
                       {/*   <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut> */}
                       {/* </DropdownMenuItem> */}
-                      <DropdownMenuItem
-                        onClick={() => setShowAccountDialog(true)}
-                      >
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Account settings</span>
-                        <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-                      </DropdownMenuItem>
+
+                      <Link href="/settings">
+                        <DropdownMenuItem>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </DropdownMenuItem>
+                      </Link>
                     </DropdownMenuGroup>
 
                     <DropdownMenuSeparator />
@@ -746,106 +745,6 @@ export default function ChatNav() {
                 Your API keys are encrypted with AES-256 encryption and stored
                 securely to maintain confidentiality and integrity.
               </p>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={showAccountDialog} onOpenChange={setShowAccountDialog}>
-            <DialogContent className="max-w-4xl h-[50dvh]">
-              <DialogHeader>
-                <DialogTitle>Account Settings</DialogTitle>
-                <DialogDescription>
-                  Manage your account settings and preferences
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pb-2 h-full">
-                <div className="space-y-4 md:border-r md:pr-4">
-                  {accountSections.map((section) => (
-                    <Button
-                      key={section.id}
-                      variant={
-                        selectedSection === section.id ? "outline" : "ghost"
-                      }
-                      className="w-full justify-between h-16 px-6"
-                      onClick={() => setSelectedSection(section.id)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <section.icon className="h-5 w-5" />
-                        <div className="flex flex-col text-left">
-                          <div className="font-medium">{section.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {section.description}
-                          </div>
-                        </div>
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-
-                <Card className="h-full">
-                  <CardHeader>
-                    <CardTitle>
-                      {
-                        accountSections.find((s) => s.id === selectedSection)
-                          ?.name
-                      }
-                    </CardTitle>
-                    <CardDescription>
-                      {selectedSection === "profile" &&
-                        "Update your personal information"}
-                      {selectedSection === "email" &&
-                        "Manage your email settings"}
-                      {selectedSection === "security" &&
-                        "Configure your security preferences"}
-                      {selectedSection === "preferences" &&
-                        "Customize your account preferences"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {selectedSection === "profile" && (
-                        <>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Email</label>
-                            <Input
-                              type="email"
-                              value={user?.email}
-                              disabled
-                              className="w-full bg-muted"
-                            />
-                          </div>
-                        </>
-                      )}
-                      {selectedSection === "email" && (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Email Notifications</p>
-                            <p className="text-sm text-muted-foreground">
-                              Manage your email notification preferences
-                            </p>
-                          </div>
-                          <Button variant="outline" disabled>
-                            Coming soon
-                          </Button>
-                        </div>
-                      )}
-                      {selectedSection === "preferences" && (
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Language Preferences</p>
-                            <p className="text-sm text-muted-foreground">
-                              Choose your preferred language
-                            </p>
-                          </div>
-                          <Button variant="outline" disabled>
-                            Coming soon
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </DialogContent>
           </Dialog>
 

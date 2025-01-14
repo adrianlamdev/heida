@@ -103,7 +103,7 @@ export default function PricingPage() {
             <div className="px-3 py-1 md:px-6 md:py-4 gap-2 flex flex-col">
               <div className="flex items-center gap-4">
                 <p className="text-2xl">Pro</p>
-                <Badge className="text-xs bg-secondary text-primary hover:bg-secondary/80 font-medium">
+                <Badge className="text-xs hover:bg-bg-green-800/20 font-medium border-green-800/30 text-green-700 backdrop-blur bg-green-800/20">
                   Popular
                 </Badge>
               </div>
