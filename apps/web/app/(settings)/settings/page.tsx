@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 import { Switch } from "@workspace/ui/components/switch";
 import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { Slider } from "@workspace/ui/components/slider";
-import { CreditCard, Download, Calendar, Check } from "lucide-react";
+import { CreditCard, Download, Calendar, Check, Scroll } from "lucide-react";
 import {
   RadioGroup,
   RadioGroupItem,
@@ -128,8 +128,8 @@ export default function SettingsPage() {
       <div className="max-w-5xl mx-auto space-y-8 w-full">
         <h2 className="text-3xl tracking-tighter">Settings</h2>
 
-        <div className="flex justify-between w-full gap-12">
-          <div className="space-y-4 w-1/3">
+        <div className="flex justify-between w-full gap-12 border p-6 rounded-md">
+          <div className="space-y-2 w-1/3">
             {settings.map((section) => (
               <Button
                 key={section.id}
@@ -146,10 +146,10 @@ export default function SettingsPage() {
           <ScrollArea className="w-full h-[70dvh]">
             {selectedSection === "profile" && <ProfileSection user={user} />}
             {selectedSection === "preferences" && <ModelPreferencesSection />}
-            {/* {selectedSection === "chat-management" && <ChatManagementSection />} */}
+            {selectedSection === "chat-management" && <ChatManagementSection />}
             {/* {selectedSection === "appearance" && <AppearanceSection />} */}
             {selectedSection === "billing" && <BillingSection />}
-            {/* {selectedSection === "account" && <AccountSection />} */}
+            {selectedSection === "account" && <AccountSection />}
           </ScrollArea>
         </div>
       </div>
@@ -158,17 +158,11 @@ export default function SettingsPage() {
 }
 
 const ProfileSection = ({ user }: { user: User | null }) => {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [emailPreferences, setEmailPreferences] = useState({
     marketing: false,
     updates: true,
     security: true,
   });
-
-  const handleDeleteAccount = async () => {
-    // Implement account deletion logic here
-    console.log("Account deletion requested");
-  };
 
   return (
     <div className="space-y-6">
@@ -256,48 +250,6 @@ const ProfileSection = ({ user }: { user: User | null }) => {
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Account Deletion Card */}
-      <Card className="border-rose-800/80 hover:border-rose-800/80 p-1">
-        <CardHeader>
-          <CardTitle>Delete Account</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!showDeleteConfirm ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Once you delete your account, there&apos;s no going back.
-              </p>
-              <Button
-                variant="destructive"
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                Delete Account
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Alert variant="destructive">
-                <AlertDescription>
-                  Are you sure you want to delete your account? This action
-                  cannot be undone.
-                </AlertDescription>
-              </Alert>
-              <div className="flex gap-1">
-                <Button variant="destructive" onClick={handleDeleteAccount}>
-                  Confirm Delete
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
@@ -471,7 +423,7 @@ const BillingSection = () => {
     {
       id: "pro",
       name: "Pro Plan",
-      price: "$49.99",
+      price: "$8.00",
       features: [
         "Unlimited Projects",
         "Advanced Analytics",
@@ -481,9 +433,9 @@ const BillingSection = () => {
   ];
 
   const invoices = [
-    { id: "1234", amount: "$49.99", date: "July 12, 2022", status: "Paid" },
-    { id: "1233", amount: "$49.99", date: "June 12, 2022", status: "Paid" },
-    { id: "1232", amount: "$49.99", date: "May 12, 2022", status: "Paid" },
+    { id: "1234", amount: "$8.00", date: "July 12, 2022", status: "Paid" },
+    { id: "1233", amount: "$8.00", date: "June 12, 2022", status: "Paid" },
+    { id: "1232", amount: "$8.00", date: "May 12, 2022", status: "Paid" },
   ];
 
   const handlePlanChange = (planId) => {
@@ -659,4 +611,335 @@ const CancelDialog = () => {
   );
 };
 
-const AccountSection = () => {};
+const AccountSection = () => {
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const handleDeleteAccount = async () => {
+    // Implement account deletion logic here
+    console.log("Account deletion requested");
+  };
+  const [sessions, setSessions] = useState([
+    {
+      id: 1,
+      device: "Chrome / Windows",
+      location: "New York, US",
+      lastActive: "2 hours ago",
+      current: true,
+    },
+    {
+      id: 2,
+      device: "Safari / macOS",
+      location: "San Francisco, US",
+      lastActive: "2 days ago",
+      current: false,
+    },
+  ]);
+
+  const handlePasswordChange = () => {
+    // Implement password change logic
+    console.log("Password change requested");
+  };
+
+  const handleSessionRevoke = (sessionId) => {
+    setSessions(sessions.filter((session) => session.id !== sessionId));
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Security Settings Card */}
+      <Card className="p-1">
+        <CardHeader>
+          <CardTitle>Security Settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Password Change Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Change Password</h3>
+                <p className="text-sm text-muted-foreground">
+                  Update your password to maintain account security
+                </p>
+              </div>
+              <Button onClick={handlePasswordChange} variant="outline">
+                Change Password
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Active Sessions Card */}
+      <Card className="p-1">
+        <CardHeader>
+          <CardTitle>Active Sessions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{session.device}</span>
+                    {session.current && (
+                      <Badge variant="secondary" className="text-xs">
+                        Current Session
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>{session.location}</p>
+                    <p>Last active: {session.lastActive}</p>
+                  </div>
+                </div>
+                {!session.current && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSessionRevoke(session.id)}
+                  >
+                    Revoke
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data & Privacy Card */}
+      <Card className="p-1">
+        <CardHeader>
+          <CardTitle>Data & Privacy</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-medium mb-1">Data Export</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Download a copy of all your data
+                </p>
+              </div>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Request Data Export
+              </Button>
+            </div>
+
+            <div className="pt-4 border-t">
+              <h3 className="font-medium mb-1">Privacy Settings</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Usage Analytics</p>
+                    <p className="text-sm text-muted-foreground">
+                      Help us improve by sharing anonymous usage data
+                    </p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Deletion Card */}
+      <Card className="border-rose-800/50 hover:border-rose-800/50 p-1 bg-rose-700/10">
+        <CardHeader>
+          <CardTitle>Delete Account</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Permanently delete your account. Your data will be deleted within 30
+            days, except we may retain metadata and logs for longer where
+            required or permitted by law.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="destructive">Request account deletion</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold">
+                  Cancel Plan
+                </DialogTitle>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const ChatManagementSection = () => {
+  return (
+    <div className="space-y-6">
+      {/* Chat History Card */}
+      <Card className="p-1">
+        <CardHeader>
+          <CardTitle>Chat History</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium mb-1">Export Chat History</h3>
+              <p className="text-sm text-muted-foreground">
+                Download all your chat conversations
+              </p>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Chats
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Export Chat History</DialogTitle>
+                  <DialogDescription>
+                    Choose a format to export your chat history
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <Button
+                    onClick={() => console.log("Export as PDF")}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    PDF Document
+                  </Button>
+                  <Button
+                    onClick={() => console.log("Export as Markdown")}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Markdown
+                  </Button>
+                  <Button
+                    onClick={() => console.log("Export as Text")}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Plain Text
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium mb-1">Delete Chat History</h3>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete all chat conversations
+                </p>
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="destructive">Delete all chats</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Chat History</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete all conversations? This
+                      action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex justify-end gap-3 mt-4">
+                    <DialogTrigger asChild>
+                      <Button variant="outline">Cancel</Button>
+                    </DialogTrigger>
+                    <Button variant="destructive">Clear History</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Files Management Card */}
+      <Card className="p-1">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Knowledge Base</CardTitle>
+            <Button variant="destructive">Delete all files</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Files you upload will be available as reference during chat
+              conversations
+            </div>
+
+            <Input placeholder="Search files" className="w-full" />
+            <div className="space-y-2">
+              {/* Example uploaded files list */}
+              <div className="flex items-center justify-between p-2 border rounded-md">
+                <div className="flex items-center space-x-4">
+                  <Button size="icon" variant="outline">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <p className="text-sm font-medium">documentation.pdf</p>
+                    <p className="text-xs text-muted-foreground">2.3 MB</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Badge
+                    variant="secondary"
+                    className="w-fit bg-green-800/20 text-green-700 border-green-800/30 hover:bg-green-800/15"
+                  >
+                    indexed
+                  </Badge>
+                  <Button variant="ghost" size="sm">
+                    Remove
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-2 border rounded-md">
+                <div className="flex items-center space-x-4">
+                  <Button size="icon" variant="outline">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <p className="text-sm font-medium">data.csv</p>
+                    <p className="text-xs text-muted-foreground">156 KB</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm">
+                  Remove
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center border-2 border-dashed rounded-lg p-4">
+              <div className="text-center">
+                <p className="text-sm font-medium">
+                  Drop files here or click to upload
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, TXT, CSV, DOCX or similar files up to 10MB
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
