@@ -1,5 +1,6 @@
 "use client";
 
+import { MouseEvent } from "react";
 import { Card, CardTitle } from "@/components/feature-card";
 import { createClient } from "@/utils/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -144,8 +145,9 @@ export default function SettingsPage() {
 
 const ProfileSection = ({ user }: { user: User | null }) => {
   const supabase = createClient();
-  const [email, setEmail] = useState(user?.email || "");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [emailPreferences, setEmailPreferences] = useState({
     marketing: false,
     product_updates: true,
@@ -155,33 +157,36 @@ const ProfileSection = ({ user }: { user: User | null }) => {
   );
 
   useEffect(() => {
-    async function loadPreferences() {
-      if (!user) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("email_preferences")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          setEmailPreferences({
-            marketing: data.marketing,
-            product_updates: data.product_updates,
-          });
-        }
-      } catch (error) {
-        toast.error("Failed to load email preferences. Please try again.");
-      } finally {
-        setLoading(false);
-      }
+    if (user?.email) {
+      setEmail(user.email);
     }
-
     loadPreferences();
-  }, [user, supabase]);
+  }, [user]);
+
+  const loadPreferences = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("email_preferences")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setEmailPreferences({
+          marketing: data.marketing,
+          product_updates: data.product_updates,
+        });
+      }
+    } catch (error) {
+      toast.error("Failed to load email preferences");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updatePreference = async (key: string, value: boolean) => {
     if (!user) return;
@@ -212,9 +217,11 @@ const ProfileSection = ({ user }: { user: User | null }) => {
     );
   }
 
-  const handleEmailChange = async () => {
+  const handleEmailChange = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
     if (!user) return;
 
+    setIsUpdating(true);
     try {
       const { error } = await supabase.auth.updateUser(
         {
@@ -228,15 +235,16 @@ const ProfileSection = ({ user }: { user: User | null }) => {
 
       if (error) throw error;
 
-      toast.success(
-        "Email updated successfully. Please check your inbox to verify your new email address.",
-      );
+      toast.success("Verification email sent. Please check your inbox.");
     } catch (error) {
-      toast.error("Failed to update email. Please try again.");
-      setSaveStatus("error");
+      toast.error("Failed to update email");
+      if (user.email) {
+        setEmail(user.email);
+      }
+    } finally {
+      setIsUpdating(false);
     }
   };
-
   return (
     <div className="space-y-6">
       {saveStatus === "error" && (
@@ -258,14 +266,22 @@ const ProfileSection = ({ user }: { user: User | null }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-1/2 bg-muted"
+                className="w-1/2"
+                disabled={isUpdating}
               />
               <Button
-                onClick={() => handleEmailChange()}
-                disabled={user?.email == email}
+                onClick={handleEmailChange}
+                disabled={user?.email === email || isUpdating}
                 variant="outline"
               >
-                Update
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update"
+                )}
               </Button>
             </div>
           </div>
