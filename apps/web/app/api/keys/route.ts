@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         encrypted_api_key: combinedEncryptedData,
         provider: type,
-        updated_at: new Date().toISOString(),
       },
       {
         onConflict: "user_id, provider",

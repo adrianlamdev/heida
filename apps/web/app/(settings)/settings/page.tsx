@@ -86,6 +86,10 @@ export default function SettingsPage() {
       name: "Profile",
     },
     {
+      id: "usage",
+      name: "Usage & Limits",
+    },
+    {
       id: "chat-management",
       name: "Chat & Knowledge",
     },
@@ -96,14 +100,6 @@ export default function SettingsPage() {
     {
       id: "billing",
       name: "Billing",
-      sections: [
-        {
-          name: "Subscription",
-        },
-        {
-          name: "Invoices",
-        },
-      ],
     },
     {
       id: "account",
@@ -193,7 +189,7 @@ const ProfileSection = ({ user }: { user: User | null }) => {
     try {
       const { error } = await supabase
         .from("email_preferences")
-        .update({ [key]: value, updated_at: new Date().toISOString() })
+        .update({ [key]: value })
         .eq("user_id", user.id);
 
       if (error) throw error;
