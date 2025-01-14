@@ -35,6 +35,7 @@ import {
   Check,
   Scroll,
   Loader2,
+  Delete,
 } from "lucide-react";
 import {
   RadioGroup,
@@ -192,7 +193,6 @@ const ProfileSection = ({ user }: { user: User | null }) => {
           setEmailPreferences({
             marketing: data.marketing,
             product_updates: data.product_updates,
-            security_alerts: data.security_alerts,
           });
         }
       } catch (error) {
@@ -546,70 +546,6 @@ const AccountSection = () => {
 
   return (
     <div className="space-y-6">
-      {/* Security Settings Card */}
-      <Card className="p-1">
-        <CardHeader>
-          <CardTitle>Security Settings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Password Change Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium">Change Password</h3>
-                <p className="text-sm text-muted-foreground">
-                  Update your password to maintain account security
-                </p>
-              </div>
-              <Button onClick={handlePasswordChange} variant="outline">
-                Change Password
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Active Sessions Card */}
-      <Card className="p-1">
-        <CardHeader>
-          <CardTitle>Active Sessions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{session.device}</span>
-                    {session.current && (
-                      <Badge variant="secondary" className="text-xs">
-                        Current Session
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <p>{session.location}</p>
-                    <p>Last active: {session.lastActive}</p>
-                  </div>
-                </div>
-                {!session.current && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSessionRevoke(session.id)}
-                  >
-                    Revoke
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Data & Privacy Card */}
       <Card className="p-1">
         <CardHeader>
@@ -659,21 +595,141 @@ const AccountSection = () => {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="destructive">Request account deletion</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-semibold">
-                  Cancel Plan
-                </DialogTitle>
-              </DialogHeader>
-            </DialogContent>
-          </Dialog>
+          <DeleteAccountDialog />
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+const DeleteAccountDialog = () => {
+  const supabase = createClient();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reason, setReason] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const reasons = [
+    "No longer needed",
+    "Privacy concerns",
+    "Not satisfied with service",
+    "Moving to a different service",
+    "Technical issues",
+    "Other",
+  ];
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("No authenticated user");
+      }
+
+      const { error } = await supabase.from("support_requests").insert({
+        user_id: user.id,
+        request_type: "ACCOUNT_DELETION",
+        subject: "Account Deletion Request",
+        message: feedback
+          ? `Reason: ${reason}\n\nFeedback: ${feedback}`
+          : `Reason: ${reason}`,
+        status: "OPEN",
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success("Request submitted successfully");
+      setIsOpen(false);
+    } catch (error) {
+      toast.error("Failed to submit request");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="destructive">Request account deletion</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            Request Account Deletion
+          </DialogTitle>
+          <DialogDescription>
+            Submit a request to delete your account. Once approved, your data
+            will be scheduled for deletion.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label>Why are you requesting account deletion?</Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {reasons.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Additional feedback (optional)</Label>
+            <Textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Help us improve our service..."
+              className="h-24"
+            />
+          </div>
+
+          <div className="border-t pt-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Once your request is processed, your account and associated data
+              will be scheduled for deletion with a 30-day grace period. During
+              this time, you can log in to cancel the deletion request.
+            </p>
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSubmit}
+              disabled={!reason || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Request"
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
